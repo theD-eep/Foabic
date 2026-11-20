@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Verify tag matches build version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          if ! grep -q "VERSION=\"$tag\"" build.sh; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the version in build.sh"
+            exit 1
+          fi
+
+      - name: Fetch official Minecraft server bundle
+        env:
+          MC_SERVER_JAR_URL: ${{ vars.MC_SERVER_JAR_URL }}
+        run: |
+          if [ -z "$MC_SERVER_JAR_URL" ]; then
+            echo "::error::Repository variable MC_SERVER_JAR_URL is not set."
+            echo "::error::Set it to the official Minecraft 26.1 server.jar download URL (Settings > Secrets and variables > Actions > Variables)."
+            exit 1
+          fi
+          curl -fsSL --retry 3 -o server.jar "$MC_SERVER_JAR_URL"
+
+      - name: Build and test
+        run: ./build.sh
+
+      - name: Write checksums
+        run: |
+          cd dist
+          sha256sum *.jar > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.jar
+            dist/SHA256SUMS
+          generate_release_notes: true
+          fail_on_unmatched_files: true
