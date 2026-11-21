@@ -1,15 +1,19 @@
-# Foabic 1.1
+# Foabic 1.2
 
-**A small, platform-neutral mod API for Minecraft 26.3, with real Fabric and NeoForge adapters.**
+<img src="docs/assets/foabic-icon.png" width="96" alt="Foabic feather pixel icon">
 
-Foabic 1.1 keeps the v1.0 rule that a minimal mod starts on both loaders, registers content and receives a signal, then adds the pieces a small content mod actually needs:
+**A small, platform-neutral mod API for Minecraft 26.3, with real Fabric and NeoForge adapters and a dual-jar Gradle plugin.**
 
-- defensive mod discovery: duplicate ids and broken metadata are logged and skipped, not turned into a game crash;
-- dependency preflight: missing `fabric-api` / `foabic-api` versions produce one actionable error, not a late `NoClassDefFoundError`;
-- blocks with automatic `BlockItem` registration and creative-tab insertion;
-- `BlockEntity` binding and `SoundEvent` registration;
-- `PlayerInteractBlockSignal`, `PlayerBreakBlockSignal` and `ServerTickSignal` on both adapters;
-- simple resource injection: one `texture=` line in `foabic.mod` generates the blockstate, block model and item model, and installs a built-in resource pack. No purple-black missing model, no manual JSON layout and no Mixin.
+Foabic 1.2 hardens the runtime and turns the two-platform setup into a build tool:
+
+- **Lifecycle-safe signals.** `connect` returns a `FoabicSubscription`; `unsubscribe()` removes a listener immediately, and both adapters clear the session bus when the server stops.
+- **Registry freeze guard.** A late `submit` throws `FoabicRegistryFrozenException` with a clear, actionable `ERROR` instead of a low-level registry crash.
+- **A genuinely tiny core.** `foabic-api-1.2.0.jar` is **14,420 bytes** (< 15 KiB) and contains **no** `net.fabricmc.*` or `net.neoforged.*` import.
+- **Foabic Loom.** One source tree, one `foabic.mod.json`, one `gradlew build`, and `dist/mod-fabric.jar` + `dist/mod-neoforge.jar`.
+- **Networking.** `FoabicPacket` + `NetworkManager.sendToServer` / `sendToClient`, backed by Fabric's play payload registry and NeoForge 26.3's `RegisterPayloadHandlersEvent`.
+- **Config.** `context.config().register(MyConfig.class)` reads or creates a pretty-printed JSON file; records and ordinary POJOs are supported.
+- **Launcher icons.** Drop `icon.png` into `src/main/resources`; Foabic Loom injects it into both platform metadata files.
+- **Canonical metadata.** `foabic.mod.json` replaces the old properties file; the legacy file is still accepted for migration.
 
 ## Supported matrix
 
@@ -20,23 +24,24 @@ Foabic 1.1 keeps the v1.0 rule that a minimal mod starts on both loaders, regist
 | Fabric Loader | **0.20.1** |
 | Fabric API | **0.166.2+26.3** |
 | NeoForge | **26.3.0.115** |
-| Foabic | **1.1.0** |
+| Foabic | **1.2.0** |
 
 Only Minecraft 26.3 is supported. There is no cross-version abstraction.
 
 ## Artifacts
 
 ```text
-dist/foabic-fabric-1.1.0.jar            106 KiB   Fabric adapter + API + loader
-dist/foabic-neoforge-1.1.0.jar          106 KiB   NeoForge adapter + API + loader
-dist/foabic-api-1.1.0.jar                49 KiB   compile-time API only
-dist/foabic-example-minimal-1.1.0.jar     7 KiB   v1.1 acceptance mod
-dist/foabic-example-chat-1.1.0.jar        3 KiB   chat reply example
+dist/foabic-api-1.2.0.jar             14,420 B   core API, < 15 KiB, zero MC imports
+dist/foabic-content-1.2.0.jar         32,219 B   Minecraft-facing API (signals/registry)
+dist/foabic-fabric-1.2.0.jar         124,592 B   Fabric adapter + core + content + loader
+dist/foabic-neoforge-1.2.0.jar       124,183 B   NeoForge adapter + core + content + loader
+dist/foabic-example-minimal-1.2.0.jar 10,344 B   v1.2 acceptance mod
+dist/foabic-example-chat-1.2.0.jar     2,786 B   chat example
 ```
 
-The platform jars are separate. The API and loader are bundled into each adapter jar, so a user installs one platform jar, not three. There is no universal/merged jar.
+The platform jars are separate. The core API, content API and loader are bundled into each adapter jar, so a user installs one platform jar, not four. There is no universal/merged jar. `gradlew build` writes `dist/SHA256SUMS`.
 
-`gradlew build` also writes `dist/SHA256SUMS` for release verification.
+`foabic-content` is a separate compile-time artifact only because the 15 KiB core limit forbids putting Minecraft-facing types in the core jar. It is not a fourth runtime install.
 
 ## Install
 
@@ -45,7 +50,7 @@ The platform jars are separate. The API and loader are bundled into each adapter
 ```text
 mods/
   fabric-api-0.166.2+26.3.jar
-  foabic-fabric-1.1.0.jar
+  foabic-fabric-1.2.0.jar
 
 foabic-mods/
   my-foabic-mod.jar
@@ -55,198 +60,284 @@ foabic-mods/
 
 ```text
 mods/
-  foabic-neoforge-1.1.0.jar
+  foabic-neoforge-1.2.0.jar
 
 foabic-mods/
   my-foabic-mod.jar
 ```
 
-Foabic mods are **not** Fabric or NeoForge mods. They contain `foabic.mod`, not `fabric.mod.json` or `neoforge.mods.toml`. Prefer `foabic-mods/`; `mods/` is also scanned as a convenience fallback.
+Foabic mods are loaded by the Foabic loader, not by Fabric or NeoForge's own entrypoint system. They contain `foabic.mod.json`. `mods/` is also scanned as a fallback, but `foabic-mods/` is preferred.
 
 The adapter must be present on both client and server for a client connection, because content registration runs on both logical sides.
 
-## A 1.1 mod
+## A 1.2 mod
 
 ```java
 public final class MyMod implements ModInitializer {
-    private static final ResourceLocation BLOCK_ID =
-            ResourceLocation.of("mymod", "my_block");
-    private static final ResourceLocation ENTITY_ID =
-            ResourceLocation.of("mymod", "my_block_entity");
-    private static final ResourceLocation SOUND_ID =
-            ResourceLocation.of("mymod", "my_sound");
-
     @Override
     public void onInitialize(ModContext context) {
-        Identifier mcId = Identifier.fromNamespaceAndPath("mymod", "my_block");
-        ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, mcId);
-        AtomicReference<BlockEntityRegistration<MyEntity>> entityRef = new AtomicReference<>();
+        MyConfig config = context.config().register(MyConfig.class);
 
-        BlockItemRegistration block = context.submitBlock(BLOCK_ID,
-                () -> new MyBlock(BlockBehaviour.Properties.of()
-                        .setId(blockKey)
-                        .strength(1.0F),
-                        () -> entityRef.get().get()));
+        NetworkManager.register(PingPacket.class, PingPacket::new);
 
-        entityRef.set(context.submitBlockEntity(ENTITY_ID, block.block(),
-                (pos, state) -> new MyEntity(entityRef.get().get(), pos, state)));
-
-        context.submit(FoabicRegistries.SOUND_EVENTS, SOUND_ID,
-                () -> SoundEvent.createVariableRangeEvent(
-                        Identifier.fromNamespaceAndPath("mymod", "my_sound")));
-
-        // Optional per-block override; the metadata texture already covers
-        // the normal case.
-        context.resources().block(BLOCK_ID, "mymod:block/my_block");
-
-        context.connect(ServerTickSignal.class, signal -> {
+        FoabicSubscription tick = context.connect(ServerTickSignal.class, signal -> {
             if (signal.tick() == 20L) {
                 context.logger().log(System.Logger.Level.INFO, "tick 20");
+                tick.unsubscribe();
             }
         });
     }
 }
 ```
 
-`foabic.mod`:
+`src/main/resources/foabic.mod.json`:
 
-```properties
-id=mymod
-name=My Mod
-version=1.1.0
-entrypoint=mymod.MyMod
-environment=*
-api=^1.1.0
-texture=mymod:block/my_block
+```json
+{
+  "schemaVersion": 1,
+  "id": "mymod",
+  "version": "1.2.0",
+  "name": "My Mod",
+  "description": "A small Foabic mod.",
+  "authors": ["Me"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoint": "mymod.MyMod",
+  "api": "^1.2.0",
+  "icon": "icon.png",
+  "texture": "mymod:block/my_block",
+  "depends": {
+    "foabic": ">=1.2.0"
+  }
+}
 ```
 
-Place the PNG at `assets/mymod/textures/block/my_block.png` inside the Foabic mod jar. Foabic copies it into the generated pack and writes:
+`texture` is optional but recommended for generated block assets. The PNG goes to `assets/mymod/textures/block/my_block.png`; Foabic generates the blockstate, block model and item model and installs them as a built-in resource pack.
 
-- `assets/mymod/blockstates/my_block.json`
-- `assets/mymod/models/block/my_block.json`
-- `assets/mymod/models/item/my_block.json`
-
-If the texture is missing, a visible generated fallback is used instead of the purple-black missing texture.
-
-## Registration
-
-`FoabicRegistries` exposes four stable views:
+## Lifecycle and cleanup
 
 ```java
-FoabicRegistries.BLOCKS
-FoabicRegistries.ITEMS
-FoabicRegistries.BLOCK_ENTITY_TYPES
-FoabicRegistries.SOUND_EVENTS
+FoabicSubscription subscription =
+        context.connect(ServerTickSignal.class, signal -> { ... });
+
+subscription.unsubscribe();
 ```
 
-### Block + BlockItem
+- `connect` returns `FoabicSubscription`, not a one-way registration.
+- `unsubscribe()` is idempotent.
+- The Fabric adapter listens to `ServerLifecycleEvents.SERVER_STOPPED`.
+- The NeoForge adapter listens to `ServerStoppedEvent`.
+- Both call `FoabicInternal.onServerStopped()`, which clears the session event bus. Adapters log `FOABIC_STOP_CLEAN ... tick_listeners=false` after cleanup.
+- `EventBus.clear()` also drops the listener callback, so a retained old handle does not keep the mod's listener object reachable.
 
-`context.submitBlock(id, blockFactory)` registers the block and a `BlockItem` with the same id, then queues the item for the Building Blocks creative tab. A custom item factory can be supplied:
+`EventBus` is synchronous and exact-type. Listeners run on the posting thread; listener exceptions are isolated and reported to the bus error handler. The 1.2 bus has insertion-order dispatch and no priority API.
+
+## Registry freeze guard
+
+The loader opens the registration window before mod initialization. Fabric closes it after `FoabicLoader.load()`; NeoForge closes it at `FMLCommonSetupEvent`, after `RegisterEvent` has flushed the deferred queues.
+
+A late submission produces the required line:
+
+```text
+[Foabic] 模组 foabic_test 试图在注册表冻结后注册物品 foabic_test:late_item，已被拦截。
+```
+
+and throws `dev.foabic.api.registry.FoabicRegistryFrozenException`. The guard is in both `ModContext.submit` and the `FoabicRegistries` proxy, so a direct late `register` is intercepted too.
+
+## Networking
 
 ```java
-context.submitBlock(id, blockFactory, block -> new BlockItem(block, itemProperties));
+public final class PingPacket implements FoabicPacket {
+    private String text;
+
+    public PingPacket() {
+    }
+
+    public PingPacket(String text) {
+        this.text = text;
+    }
+
+    @Override
+    public byte[] encode() {
+        return text.getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Override
+    public void decode(byte[] data) {
+        text = new String(data, StandardCharsets.UTF_8);
+    }
+
+    @Override
+    public void handle() {
+        // Runs on the game thread.
+    }
+}
 ```
 
-### BlockEntity
+Register once during initialization:
 
-`context.submitBlockEntity(id, blockRegistration, factory)` creates the `BlockEntityType` with the block bound into its valid-block set. The factory is evaluated after the block on both platforms. A block's `newBlockEntity` should call the `BlockEntityRegistration.get()` later, not during `onInitialize`.
-
-### SoundEvent
-
-Sound events are ordinary factories in `FoabicRegistries.SOUND_EVENTS`. The actual `sounds.json` and `.ogg` assets remain the mod author's responsibility; Foabic only guarantees registration.
-
-## Signals in 1.1
-
-| Signal | Fabric bridge | NeoForge bridge |
-| --- | --- | --- |
-| `ServerStartedSignal` | `ServerLifecycleEvents.SERVER_STARTED` | `ServerStartedEvent` |
-| `ServerTickSignal` | `ServerTickEvents.END_SERVER_TICK` | `ServerTickEvent.Post` |
-| `PlayerInteractBlockSignal` | `UseBlockCallback` | `PlayerInteractEvent.RightClickBlock` |
-| `PlayerBreakBlockSignal` | `PlayerBlockBreakEvents.BEFORE` | `BreakBlockEvent` |
-| `ChatMessageSignal` | `ServerMessageEvents.CHAT_MESSAGE` | `ServerChatEvent` |
-
-`PlayerInteractBlockSignal` has a mutable `Result` (`PASS`, `SUCCESS`, `CONSUME`, `FAIL`) mapped back to each platform's interaction result. `PlayerBreakBlockSignal` is cancellable; canceling it aborts the Fabric break and cancels the NeoForge `BreakBlockEvent`.
-
-The old `UseBlockSignal` still compiles and is delivered when a listener is registered, but it is deprecated in favor of `PlayerInteractBlockSignal`.
-
-All signals are plain data. They do not expose live `ServerPlayer`, `Level` or `MinecraftServer` objects.
-
-## Defensive loading
-
-Duplicate ids are handled in `ModDiscoverer`:
-
-```text
-发现重复的 Mod ID: mymod，已跳过加载 (...); 已加载自 ...
+```java
+NetworkManager.register(PingPacket.class, PingPacket::new);
 ```
 
-The line is logged at `ERROR` level and loading continues with the first jar. Broken metadata or an unreadable jar is also logged and skipped. Byte-identical duplicate copies are no longer a special case; they are skipped by the same rule.
+Send:
 
-Declared dependencies are checked before any mod entrypoint class is loaded:
-
-- `fabric-api` and `foabic-api` ranges are checked against the actual installed versions;
-- a NeoForge server that sees a Fabric-only dependency gets a message saying so;
-- unknown required mods name the mod and the missing dependency;
-- an undeclared missing class is caught during initialization and reported as a dependency problem rather than a bare `NoClassDefFoundError`.
-
-A missing dependency is a hard failure for the affected load. Foabic reports it clearly instead of continuing into a random crash.
-
-## Verification
-
-The same platform-neutral example jar is installed on both dedicated servers. The final 1.1.0 jars were started twice per platform. Both runs produced the same Foabic lines, including block, item, block-entity and sound registration, the server-start signal, and the tick-20 signal.
-
-```text
-FOABIC_REGISTER platform=fabric block=foabic_test:test_block item=foabic_test:test_block
-FOABIC_STATUS platform=fabric block_registered=true item_registered=true block_entity_registered=true sound_registered=true
-FOABIC_TICK platform=fabric tick=20 players=0
+```java
+NetworkManager.sendToServer(new PingPacket("hello"));
+NetworkManager.sendToClient(serverPlayer, new PingPacket("hello"));
 ```
 
-A temporary fake-player harness also exercised the real Fabric and NeoForge interaction paths. It confirmed that the block entity is created and that both player signals reach the mod:
+All packets share the `foabic:packet` play payload and carry the packet class name plus opaque bytes. Fabric uses `PayloadTypeRegistry` + `ServerPlayNetworking`/`ClientPlayNetworking`. NeoForge 26.3 no longer has the old `SimpleChannel`; Foabic uses its supported replacement, `RegisterPayloadHandlersEvent` + `PayloadRegistrar.playBidirectional`, and dispatches on the game thread. A packet is limited to 1 MiB.
 
-```text
-SELFTEST_BLOCK_ENTITY=example.MinimalMod$TestBlockEntity
-FOABIC_INTERACT player=[Minecraft] block=foabic_test:test_block pos=0,100,0 hand=MAIN_HAND
-FOABIC_BREAK player=[Minecraft] block=foabic_test:test_block pos=0,100,0
+## Config
+
+```java
+public final class MyConfig {
+    public String greeting = "hello";
+    public int interval = 20;
+
+    public MyConfig() {
+    }
+}
+
+MyConfig config = context.config().register(MyConfig.class);
+config.greeting = "hi";
+context.config().save(config);
 ```
 
-Full evidence:
+- Stored at `config/foabic/<mod-id>/<Type>.json`.
+- Pretty-printed Gson JSON; Gson is already provided by Minecraft.
+- Records and no-arg POJOs are supported.
+- A malformed file is backed up as `.broken` and regenerated from defaults.
+- `register` caches the instance; repeated calls return the same object.
 
-- [Fabric 1.1 evidence](docs/verification/v11-fabric.txt)
-- [NeoForge 1.1 evidence](docs/verification/v11-neoforge.txt)
-- [Verification notes](docs/VERIFICATION.md)
+## Foabic Loom
 
-The generated pack contents were inspected on both servers. No graphical client was launched, so the rendered texture was not visually captured. The pack is a normal built-in resource pack; Fabric uses `ResourceLoader.registerBuiltinPack`, NeoForge uses `AddPackFindersEvent` with a fixed `PathPackResources`.
+The plugin lives in `foabic-gradle-plugin/` and is an included build. In a consuming project:
 
-## Build
+```kotlin
+// settings.gradle.kts
+pluginManagement {
+    includeBuild("foabic-gradle-plugin")
+}
+
+// build.gradle.kts
+plugins {
+    java
+    id("dev.foabic.loom")
+}
+
+foabic {
+    minecraftVersion = "26.3"
+}
+```
+
+Put `src/main/resources/foabic.mod.json` in the project, add the Foabic content API and your Minecraft compile classpath, then run:
 
 ```bat
-set JAVA_HOME=C:\path\to\jdk-25
 gradlew.bat build
 ```
 
-The repository ships a Gradle **9.5.1** wrapper. The build uses Java 25 toolchains and produces the five jars in `dist/`.
+Outputs:
 
-- `:fabric` uses the non-remapping `net.fabricmc.fabric-loom` plugin for Minecraft 26.3.
-- `:neoforge` uses Gradle's `java` plugin against the official NeoForge 26.3.0.115 universal artifact. ModDevGradle is not active because `net.neoforged:neoform-runtime:2.0.31` is unavailable from this network; the adapter code is independent of that choice.
-- `:coreTest` runs event, version, new-signal, defensive-loader and resource-generation tests.
-- `:dist` writes the five jars and `SHA256SUMS`.
+```text
+dist/mod-fabric.jar
+dist/mod-neoforge.jar
+```
 
-The default Minecraft and NeoForge inputs are read from `.cache/`; see [docs/BUILD.md](docs/BUILD.md).
+The plugin:
 
-## Deliberately not in 1.1
+- compiles the single main source set once;
+- generates the canonical `foabic.mod.json`;
+- injects `fabric.mod.json` into the Fabric jar;
+- injects `META-INF/neoforge.mods.toml` into the NeoForge jar;
+- embeds the canonical metadata as a custom field in both platform files;
+- validates the mod id/version/entrypoint and filters platform-only dependencies where possible.
 
-- **Mixin.** No Mixin dependency or annotation processor is added.
-- **A Gradle build plugin for Foabic mod authors.** The two adapters are still configured manually.
-- **Rendering-layer work.** No Sodium/OpenGL integration; resource generation is data only.
+The demo in `examples/plugin-demo/` is built by this plugin and its jars were loaded successfully by the normal Foabic loader on both platforms.
+
+## Icons
+
+Foabic itself uses the Minecraft-style feather pixel logo at [docs/assets/foabic-icon.png](docs/assets/foabic-icon.png).
+
+For a mod, the simplest path is:
+
+```text
+src/main/resources/icon.png
+```
+
+Foabic Loom detects it automatically and writes:
+
+- Fabric `fabric.mod.json` → `"icon": "icon.png"`
+- NeoForge `META-INF/neoforge.mods.toml` → `logoFile="icon.png"`
+
+You can also use an explicit path:
+
+```json
+{
+  "icon": "assets/mymod/icon.png"
+}
+```
+
+The plugin validates that the PNG exists in `src/main/resources` and fails the build with a clear message if it does not.
+
+**Launcher visibility:** HMCL/PCL2 and other launchers only scan standard Fabric/NeoForge metadata in the standard `mods/` directory. A jar that exists only in `foabic-mods/` will not show an icon there. To make the icon visible, put the plugin-built `mod-fabric.jar` or `mod-neoforge.jar` in `mods/`; Foabic also scans `mods/` and loads the same jar. The demo jars have been verified to load from both `mods/` and `foabic-mods/`.
+
+## Build and verify
+
+```bat
+set JAVA_HOME=C:\path\to\jdk-25
+gradlew.bat clean build
+```
+
+The build:
+
+- compiles the core API, content API, loader and both adapters;
+- runs 9 core test groups, including event removal, registry-freeze interception, JSON metadata, config reload and network encode/decode;
+- verifies the core API jar is under 15 KiB and scans `src/api` + `src/content` for platform imports;
+- builds both example jars and the Foabic Loom demo;
+- copies the six release jars to `dist/` and writes `SHA256SUMS`.
+
+`gradlew.bat :api:check` prints the size check:
+
+```text
+FOABIC_API_SIZE bytes=14420 limit=15360
+```
+
+## Runtime evidence
+
+The final 1.2 jars were started twice on a Fabric 26.3 dedicated server and twice on a NeoForge 26.3.0.115 dedicated server. Both runs exited cleanly with:
+
+```text
+FOABIC_SIGNAL name=server_started platform=... mc=26.3 mods=1
+FOABIC_STATUS platform=... block_registered=true item_registered=true block_entity_registered=true sound_registered=true
+FOABIC_CONFIG platform=... greeting=hello-v1.2
+FOABIC_NETWORK platform=... packet=example.MinimalMod$StatusPacket
+FOABIC_TICK platform=... tick=20 players=0
+FOABIC_UNSUBSCRIBE platform=... tick=40
+FOABIC_STOP_CLEAN platform=... tick_listeners=false
+[Foabic] 模组 foabic_test 试图在注册表冻结后注册物品 foabic_test:late_item，已被拦截。
+FOABIC_FROZEN_GUARD platform=... caught=true object=foabic_test:late_item
+```
+
+Full logs: [Fabric](docs/verification/v12-fabric.txt), [NeoForge](docs/verification/v12-neoforge.txt).
+
+No graphical client was launched. Networking packet registration, encoding/decoding and dispatch are covered by tests; a live client round-trip over a socket, creative-tab rendering and audio playback are not part of this verification.
+
+## Deliberately not in 1.2
+
+- **Mixin.** No Mixin dependency or annotation processor.
+- **Rendering-layer work.** No Sodium/OpenGL integration.
 - A universal/merged jar.
-- Networking, GUI, data generation and a full UI signal library.
+- GUI/screen API, full data generation, a live client test harness.
 - Binary compatibility across 1.x.
 
 ## Documentation
 
 - [API](docs/API.md)
+- [Build](docs/BUILD.md)
 - [Fabric adapter](docs/FABRIC.md)
 - [NeoForge adapter](docs/NEOFORGE.md)
-- [Build inputs](docs/BUILD.md)
 - [Verification](docs/VERIFICATION.md)
 - [Roadmap](docs/ROADMAP.md)
 

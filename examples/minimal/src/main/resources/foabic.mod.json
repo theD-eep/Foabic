@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "foabic_test",
+  "version": "1.2.0",
+  "name": "Foabic Minimal Test",
+  "description": "Registers content, reads a config, registers a packet, and observes start/tick/interact/break signals.",
+  "authors": ["Foabic contributors"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoint": "example.MinimalMod",
+  "api": "^1.2.0",
+  "icon": "icon.png",
+  "texture": "foabic_test:block/test_block",
+  "depends": {
+    "foabic": ">=1.2.0"
+  }
+}

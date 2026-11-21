@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("foabic-gradle-plugin")
     repositories {
         gradlePluginPortal()
         maven("https://maven.fabricmc.net/") { name = "Fabric" }
@@ -7,4 +8,4 @@ pluginManagement {
 
 rootProject.name = "foabic"
 
-include("api", "loader", "fabric", "neoforge", "examples:minimal", "examples:chat")
+include("api", "content", "loader", "fabric", "neoforge", "examples:minimal", "examples:chat", "examples:plugin-demo")

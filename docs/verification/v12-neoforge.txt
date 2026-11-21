@@ -1,0 +1,81 @@
+Foabic 1.2.0 — NeoForge 26.3.0.115 dedicated-server evidence
+=============================================================
+
+Date: 2026-11-21
+Platform: NeoForge 26.3.0.115
+Minecraft: 26.3
+Java: Eclipse Temurin 25.0.5.1+2
+Artifact: dist/foabic-neoforge-1.2.0.jar (124,183 bytes)
+Example:  dist/foabic-example-minimal-1.2.0.jar (10,344 bytes)
+Command:  NeoForge win_args.txt; stdin "stop" after Done
+Runs:     two fresh JVMs; both exit code 0
+
+Run 1
+-----
+信息: Foabic 1.2.0 starting on neoforge/SERVER
+信息: initializing foabic_test 1.2.0
+信息: FOABIC_CONFIG type=example.MinimalMod$TestConfig file=D:\WJ\foabic\.cache\neoforge-server\config\foabic\foabic_test\TestConfig.json
+信息: FOABIC_REGISTER platform=neoforge block=foabic_test:test_block item=foabic_test:test_block
+信息: FOABIC_V12_REGISTER platform=neoforge block_entity=foabic_test:test_block_entity sound=foabic_test:test_sound
+信息: FOABIC_CONFIG platform=neoforge greeting=hello-v1.2
+信息: FOABIC_NETWORK platform=neoforge packet=example.MinimalMod$StatusPacket
+信息: FOABIC_READY platform=neoforge sound=foabic_test:test_sound
+信息: FOABIC_RESOURCES files=5 textures=1 root=D:\WJ\foabic\.cache\neoforge-server\.foabic\generated-resources
+信息: Foabic loaded 1 mod(s) in 67 ms on neoforge
+信息: Foabic 1.2.0 attached to NeoForge (SERVER) with 1 Foabic mod(s)
+信息: FOABIC_SIGNAL name=server_started platform=neoforge mc=26.3 mods=1
+信息: FOABIC_STATUS platform=neoforge block_registered=true item_registered=true block_entity_registered=true sound_registered=true
+严重: [Foabic] 模组 foabic_test 试图在注册表冻结后注册物品 foabic_test:late_item，已被拦截。
+信息: FOABIC_FROZEN_GUARD platform=neoforge caught=true object=foabic_test:late_item
+信息: FOABIC_TICK platform=neoforge tick=20 players=0
+信息: FOABIC_UNSUBSCRIBE platform=neoforge tick=40
+信息: FOABIC_STOP_CLEAN platform=neoforge tick_listeners=false
+
+Run 2
+-----
+信息: Foabic 1.2.0 starting on neoforge/SERVER
+信息: initializing foabic_test 1.2.0
+信息: FOABIC_CONFIG type=example.MinimalMod$TestConfig file=D:\WJ\foabic\.cache\neoforge-server\config\foabic\foabic_test\TestConfig.json
+信息: FOABIC_REGISTER platform=neoforge block=foabic_test:test_block item=foabic_test:test_block
+信息: FOABIC_V12_REGISTER platform=neoforge block_entity=foabic_test:test_block_entity sound=foabic_test:test_sound
+信息: FOABIC_CONFIG platform=neoforge greeting=hello-v1.2
+信息: FOABIC_NETWORK platform=neoforge packet=example.MinimalMod$StatusPacket
+信息: FOABIC_READY platform=neoforge sound=foabic_test:test_sound
+信息: FOABIC_RESOURCES files=5 textures=1 root=D:\WJ\foabic\.cache\neoforge-server\.foabic\generated-resources
+信息: FOABIC_SIGNAL name=server_started platform=neoforge mc=26.3 mods=1
+信息: FOABIC_STATUS platform=neoforge block_registered=true item_registered=true block_entity_registered=true sound_registered=true
+严重: [Foabic] 模组 foabic_test 试图在注册表冻结后注册物品 foabic_test:late_item，已被拦截。
+信息: FOABIC_FROZEN_GUARD platform=neoforge caught=true object=foabic_test:late_item
+信息: FOABIC_TICK platform=neoforge tick=20 players=0
+信息: FOABIC_UNSUBSCRIBE platform=neoforge tick=40
+信息: FOABIC_STOP_CLEAN platform=neoforge tick_listeners=false
+
+Config file
+-----------
+config/foabic/foabic_test/TestConfig.json
+{
+  "greeting": "hello-v1.2",
+  "exampleNumber": 42
+}
+
+Foabic Loom demo (separate run)
+-------------------------------
+Artifacts: examples/plugin-demo/dist/mod-neoforge.jar (3,368 bytes)
+信息: initializing foabic_plugin_demo 1.2.0
+信息: FOABIC_PLUGIN_READY platform=neoforge
+信息: FOABIC_PLUGIN_DEMO platform=neoforge mod=foabic_plugin_demo
+信息: FOABIC_STOP_CLEAN platform=neoforge tick_listeners=false
+
+Notes
+-----
+NeoForge emits Netty epoll/kqueue Windows warnings during startup. They are
+environment noise, not Foabic failures. Both runs reached Done and exited 0.
+The old SimpleChannel API is absent in NeoForge 26.3; Foabic uses the supported
+RegisterPayloadHandlersEvent/PayloadRegistrar path.
+
+Result
+------
+Both NeoForge runs reached Done, accepted all content, read the config,
+registered the packet, emitted the freeze-guard line, removed the tick
+subscription, and cleared the session bus on graceful stop. No Foabic exception
+reached the log.

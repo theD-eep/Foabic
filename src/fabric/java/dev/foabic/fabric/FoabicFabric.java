@@ -2,6 +2,7 @@ package dev.foabic.fabric;
 
 import dev.foabic.api.Foabic;
 import dev.foabic.api.mod.Environment;
+import dev.foabic.api.registry.FoabicRegistries;
 import dev.foabic.fabric.registry.FabricRegistries;
 import dev.foabic.loader.FoabicLoader;
 import net.fabricmc.api.EnvType;
@@ -39,12 +40,17 @@ public final class FoabicFabric implements ModInitializer {
                 mod.getMetadata().getVersion().getFriendlyString()));
 
         FabricRegistries.bind();
+        FabricNetwork.register();
         FoabicLoader.load(gameDirectory,
                 // Preferred: foabic-mods. Also accept mods/ as a convenience
                 // for users who drop Foabic jars next to Fabric mods; Fabric
-                // ignores them as non-Fabric mods, while Foabic reads foabic.mod.
+                // ignores them as non-Fabric mods, while Foabic reads foabic.mod.json.
                 List.of(gameDirectory.resolve("foabic-mods"), gameDirectory.resolve("mods")),
                 environment, PLATFORM, provided);
+
+        // All content has been submitted by now. Late submissions must fail
+        // with FoabicRegistryFrozenException instead of a low-level crash.
+        FoabicRegistries.freezeRegistration();
 
         // Signal bridges and creative-tab callbacks are registered after the
         // loader has resolved every Foabic mod. The generated resource pack is

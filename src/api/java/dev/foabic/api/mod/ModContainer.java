@@ -1,7 +1,5 @@
 package dev.foabic.api.mod;
 
-import dev.foabic.api.version.Version;
-
 import java.nio.file.Path;
 import java.util.List;
 
@@ -12,15 +10,12 @@ public interface ModContainer {
 
     String name();
 
-    Version version();
+    /** The declared version string, as written in {@code foabic.mod.json}. */
+    String version();
 
     String description();
 
     List<String> authors();
-
-    Environment environment();
-
-    ModMetadata metadata();
 
     Path jar();
 

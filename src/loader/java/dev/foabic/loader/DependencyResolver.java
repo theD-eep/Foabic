@@ -2,8 +2,8 @@ package dev.foabic.loader;
 
 import dev.foabic.api.Foabic;
 import dev.foabic.api.mod.Dependency;
-import dev.foabic.api.version.Version;
-import dev.foabic.api.version.VersionRange;
+import dev.foabic.loader.version.Version;
+import dev.foabic.loader.version.VersionRange;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -60,7 +60,7 @@ final class DependencyResolver {
 
     List<DiscoveredMod> resolve() {
         for (DiscoveredMod mod : byId.values()) {
-            VersionRange range = mod.metadata().apiRange();
+            VersionRange range = range(mod.metadata().apiRange(), mod.metadata().id(), "API");
             if (!range.test(apiVersion)) {
                 throw new DependencyException("mod '" + mod.metadata().id()
                         + "' requires Foabic API " + range + ", but this runtime provides "
@@ -96,8 +96,9 @@ final class DependencyResolver {
             DiscoveredMod target = byId.get(dependency.id());
             Version providedVersion = provided.get(dependency.id());
             if (target == null && providedVersion == null) continue;
-            Version actual = target == null ? providedVersion : target.metadata().version();
-            if (!dependency.matches(actual)) {
+            Version actual = target == null
+                    ? providedVersion : version(target.metadata().version(), id);
+            if (!range(dependency.range(), id, dependency.id()).test(actual)) {
                 log.log(System.Logger.Level.WARNING,
                         "ignoring optional dependency {0}@{1} of {2}: found {3}",
                         dependency.id(), dependency.range(), id, actual);
@@ -113,10 +114,11 @@ final class DependencyResolver {
     private void resolveRequired(String modId, Dependency dependency) {
         DiscoveredMod target = byId.get(dependency.id());
         if (target != null) {
-            if (!dependency.matches(target.metadata().version())) {
+            Version targetVersion = version(target.metadata().version(), target.metadata().id());
+            if (!range(dependency.range(), modId, dependency.id()).test(targetVersion)) {
                 throw new DependencyException("mod '" + modId + "' requires '"
                         + dependency.id() + "' " + dependency.range() + ", but Foabic found "
-                        + target.metadata().version() + " in " + target.jar().getFileName()
+                        + targetVersion + " in " + target.jar().getFileName()
                         + ". Install a matching version or update the mod.");
             }
             return;
@@ -124,7 +126,7 @@ final class DependencyResolver {
 
         Version providedVersion = provided.get(dependency.id());
         if (providedVersion != null) {
-            if (!dependency.matches(providedVersion)) {
+            if (!range(dependency.range(), modId, dependency.id()).test(providedVersion)) {
                 throw new DependencyException("mod '" + modId + "' requires '"
                         + dependency.id() + "' " + dependency.range() + ", but "
                         + displayName(dependency.id()) + " provides " + providedVersion
@@ -134,6 +136,24 @@ final class DependencyResolver {
         }
 
         throw new DependencyException(missingMessage(modId, dependency));
+    }
+
+    private static Version version(String text, String owner) {
+        try {
+            return Version.parse(text);
+        } catch (IllegalArgumentException e) {
+            throw new DependencyException("mod '" + owner + "' declares invalid version '"
+                    + text + "'");
+        }
+    }
+
+    private static VersionRange range(String text, String modId, String dependencyId) {
+        try {
+            return VersionRange.parse(text);
+        } catch (IllegalArgumentException e) {
+            throw new DependencyException("mod '" + modId + "' declares invalid range '"
+                    + text + "' for '" + dependencyId + "'");
+        }
     }
 
     private String missingMessage(String modId, Dependency dependency) {
@@ -158,7 +178,7 @@ final class DependencyResolver {
         }
         return "mod '" + modId + "' requires missing mod '" + id + "' " + dependency.range()
                 + ". Put " + id + " in foabic-mods/ (or the platform mods/ directory if it is a "
-                + "native mod) and restart, or remove the dependency from foabic.mod.";
+                + "native mod) and restart, or remove the dependency from foabic.mod.json.";
     }
 
     private String displayName(String id) {

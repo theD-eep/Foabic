@@ -13,15 +13,15 @@ Thanks for helping. Foabic is deliberately small: read the scope rules before wr
 | Fabric API | **0.166.2+26.3** | nested modules are used at compile time |
 | NeoForge | **26.3.0.115** | universal jar + installed libraries |
 
-The build is Gradle. `:fabric` uses the non-remapping `net.fabricmc.fabric-loom` plugin; `:neoforge` uses the `java` plugin against the official NeoForge universal artifact. There are no project-local `.cmd` or `.ps1` build scripts.
+The build is Gradle. `:fabric` uses the non-remapping `net.fabricmc.fabric-loom` plugin; `:neoforge` uses the `java` plugin against the official NeoForge universal artifact. `foabic-gradle-plugin` is an included build. There are no project-local `.cmd` or `.ps1` build scripts.
 
 ## Build and test
 
 ```bat
-gradlew.bat build
+gradlew.bat clean build
 ```
 
-The build compiles the API, loader, Fabric adapter, NeoForge adapter and examples, packages five jars, runs `:coreTest`, and copies the artifacts to `dist/`. See [docs/BUILD.md](docs/BUILD.md) for the `.cache` input layout.
+The build compiles the core API, content API, loader, adapters and examples, runs `:coreTest`, enforces the < 15 KiB API limit and the no-platform-imports rule, and copies six jars to `dist/`. The Foabic Loom demo builds itself into `examples/plugin-demo/dist/`. See [docs/BUILD.md](docs/BUILD.md) for the `.cache` input layout.
 
 Expected test tail:
 
@@ -33,49 +33,60 @@ PASS legacy use-block signal
 PASS player-interact-block signal
 PASS player-break-block signal
 PASS server-tick signal
+PASS networking round trip
 PASS loader defenses
-ALL TESTS PASSED (8)
+ALL TESTS PASSED (9)
+```
+
+Expected API check:
+
+```text
+FOABIC_API_SIZE bytes=14420 limit=15360
 ```
 
 Artifacts in `dist/`:
 
 ```text
-foabic-api-1.1.0.jar                  compile-time API
-foabic-fabric-1.1.0.jar               Fabric adapter + API + loader
-foabic-neoforge-1.1.0.jar             NeoForge adapter + API + loader
-foabic-example-minimal-1.1.0.jar      common acceptance mod
-foabic-example-chat-1.1.0.jar         chat reply example
+foabic-api-1.2.0.jar                  14,420 B   core API, no platform imports
+foabic-content-1.2.0.jar              32,219 B   Minecraft-facing API
+foabic-fabric-1.2.0.jar              124,592 B   Fabric adapter + core + content + loader
+foabic-neoforge-1.2.0.jar            124,183 B   NeoForge adapter + core + content + loader
+foabic-example-minimal-1.2.0.jar      10,344 B   common acceptance mod
+foabic-example-chat-1.2.0.jar          2,786 B   chat reply example
 ```
 
 The Gradle build reads local `.cache/` inputs and does not download game files itself.
 
-For adapter changes, install the Gradle-built jars into the prepared Fabric and NeoForge runtimes and start each dedicated server twice. The exact expected observations are in [docs/VERIFICATION.md](docs/VERIFICATION.md). Changes to signals or block entities should also be exercised with a fake-player harness on both platforms.
+For adapter changes, install the Gradle-built jars into the prepared Fabric and NeoForge runtimes and start each dedicated server twice. The exact expected observations are in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 ## Scope rules
 
-v1.1 accepts:
+v1.2 accepts:
 
-- fixes to either adapter, the four registry views, `submit`, `submitBlock`, `submitBlockEntity`, `connect`, the five current signals and the legacy `UseBlockSignal` compatibility path;
-- loader discovery, dependency preflight and event-bus fixes;
+- fixes to either adapter, the four registry views, `submit`, `submitBlock`, `submitBlockEntity`, `connect`, lifecycle/subscription cleanup, the current signals and the legacy `UseBlockSignal` compatibility path;
+- loader discovery, dependency preflight, JSON metadata, config and network bridge fixes;
+- Foabic Loom packaging, launcher icon and metadata fixes;
 - generated resource/creative-tab fixes that do not require Mixin or a rendering hook;
-- documentation, tests and the acceptance example.
+- documentation, tests and the acceptance examples.
 
-Do **not** add on the 1.1 line: Mixin, a Gradle/Maven build plugin, universal packaging, a full signal library, networking, GUI APIs or rendering-layer code. Those are explicitly deferred; see [docs/ROADMAP.md](docs/ROADMAP.md).
+Do **not** add on the 1.2 line: Mixin, universal packaging, a full signal library, GUI APIs, rendering-layer code or a live client test requirement. Those are explicitly deferred; see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 Architecture rules:
 
-- `src/api` may reference Minecraft **content types** used by the public API (`Block`, `Item`, `BlockEntityType`, `SoundEvent`) but must not import Fabric or NeoForge loader classes.
-- `src/loader` may compile against Minecraft for API signatures and defensive tests, but the loader runtime must not import Fabric or NeoForge classes.
+- `src/api` is the core API and must not import Minecraft, Fabric or NeoForge. It must stay small enough for the < 15 KiB jar check.
+- `src/content` may reference Minecraft content types used by the public API (`Block`, `Item`, `BlockEntityType`, `SoundEvent`) but must not import Fabric or NeoForge loader classes.
+- `src/loader` may compile against Minecraft for API signatures and tests, but the loader runtime must not import Fabric or NeoForge classes.
 - Platform-specific code belongs in `src/fabric` or `src/neoforge`.
 - A registration factory must not be evaluated during NeoForge mod construction; it must run in `RegisterEvent`.
 - Resource generation must stay data-only. Do not parse complex model JSON and do not touch a renderer.
+- New platform jars must be produced by `foabic-gradle-plugin`, not by hand-written twin build files.
 
 ## Style
 
 - 4 spaces, UTF-8, no BOM (the metadata parser tolerates a BOM, but do not add one).
-- No third-party runtime dependency beyond the JDK and the platform loader/API the user installs.
-- No classpath scanning or annotation reflection; the loader only reads `foabic.mod`.
-- Keep the public API small. If a new public type is not needed by the example or a test, do not add it.
+- No third-party runtime dependency beyond the JDK and the platform loader/API the user installs. Gson is already supplied by Minecraft and may be used by the loader.
+- No classpath scanning or annotation reflection; the loader only reads `foabic.mod.json` / legacy `foabic.mod`.
+- Keep the public API small. If a new public type is not needed by an example or a test, do not add it.
 - Public API changes must update [docs/API.md](docs/API.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## Version numbers
@@ -86,15 +97,16 @@ The version appears in these places and must match:
 2. `src/api/java/dev/foabic/api/Foabic.java` — `VERSION`
 3. `src/fabric/resources/fabric.mod.json` — `"version"`
 4. `src/neoforge/resources/META-INF/neoforge.mods.toml` — `version`
-5. `examples/*/src/main/resources/foabic.mod` — `version` and `api`
-6. `CHANGELOG.md` — the section heading
+5. `foabic-gradle-plugin/build.gradle.kts` — plugin `version`
+6. `examples/*/src/main/resources/foabic.mod.json` — `version` and `api`
+7. `CHANGELOG.md` — the section heading
 
-Tags use a `v` prefix, for example `v1.1.0`.
+Tags use a `v` prefix, for example `v1.2.0`.
 
 ## Commits and pull requests
 
 1. Fork the repository and branch from `main`: `fix/...`, `feat/...`, `docs/...`.
-2. Run `gradlew.bat build`; for adapter changes, repeat the server acceptance described in [docs/VERIFICATION.md](docs/VERIFICATION.md).
+2. Run `gradlew.bat clean build`; for adapter changes, repeat the server acceptance described in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 3. Do not commit `.cache/`, `.gradle/`, `build/`, game worlds, logs or server jars; they are ignored.
 4. `dist/` is ignored and is a release artifact, not source. Maintainers regenerate it when cutting a release.
 5. One concern per pull request; keep formatting or renaming in a separate change.

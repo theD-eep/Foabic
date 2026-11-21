@@ -1,18 +1,26 @@
 # Verification evidence
 
-## Foabic 1.1 (current)
+## Foabic 1.2 (current)
+
+- [Fabric](v12-fabric.txt)
+- [NeoForge](v12-neoforge.txt)
+
+These cover the final 1.2.0 jars: two dedicated-server runs per platform, JSON
+metadata, config, packet registration, registry-freeze interception, explicit
+unsubscribe and server-stop bus cleanup. The Foabic Loom demo jar loads are
+included in the same files.
+
+## Foabic 1.1 (historical)
 
 - [Fabric](v11-fabric.txt)
 - [NeoForge](v11-neoforge.txt)
 
-These cover the final 1.1.0 jars: dual-platform startup, duplicate-id and
-dependency-error behavior, fake-player interaction/break signals, and generated
-resource-pack contents.
+Kept for release history. The current verification summary is
+[../VERIFICATION.md](../VERIFICATION.md).
 
 ## Foabic 1.0 (historical)
 
 - [Fabric](fabric.txt)
 - [NeoForge](neoforge.txt)
 
-Kept for release history. The current verification summary is
-[../VERIFICATION.md](../VERIFICATION.md).
+Kept for release history.

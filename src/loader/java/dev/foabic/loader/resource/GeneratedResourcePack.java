@@ -90,7 +90,7 @@ public final class GeneratedResourcePack {
                     if (!fallbackLogged) {
                         log.log(System.Logger.Level.INFO,
                                 "mod {0} declares no texture; generating a fallback model for "
-                                        + "its blocks. Set texture= in foabic.mod to use a real texture.",
+                                        + "its blocks. Set texture in foabic.mod.json to use a real texture.",
                                 context.mod().id());
                         fallbackLogged = true;
                     }

@@ -21,7 +21,7 @@ import java.util.jar.JarFile;
 /**
  * Tolerant mod-jar discovery.
  *
- * <p>A broken jar or malformed {@code foabic.mod} is reported and skipped; it
+ * <p>A broken jar or malformed {@code foabic.mod.json} is reported and skipped; it
  * must not take down the game. Duplicate ids are also skipped, with an ERROR
  * line naming the id. Dependency failures are different: they are detected
  * before any entrypoint class is loaded and reported as a clear
@@ -86,20 +86,25 @@ final class ModDiscoverer {
 
     private static DiscoveredMod read(Path jarPath, Environment environment, System.Logger log) {
         try (JarFile jar = new JarFile(jarPath.toFile(), false)) {
-            JarEntry entry = jar.getJarEntry("foabic.mod");
+            JarEntry entry = jar.getJarEntry("foabic.mod.json");
+            String entryName = "foabic.mod.json";
             if (entry == null || entry.isDirectory()) {
-                log.log(System.Logger.Level.DEBUG, "ignoring {0}: no foabic.mod", jarPath.getFileName());
+                entry = jar.getJarEntry("foabic.mod");
+                entryName = "foabic.mod";
+            }
+            if (entry == null || entry.isDirectory()) {
+                log.log(System.Logger.Level.DEBUG, "ignoring {0}: no foabic.mod.json", jarPath.getFileName());
                 return null;
             }
             if (entry.getSize() > ModMetadataParser.MAX_BYTES) {
-                throw new ModLoadException(jarPath.getFileName() + ": foabic.mod is too large");
+                throw new ModLoadException(jarPath.getFileName() + ": " + entryName + " is too large");
             }
             byte[] bytes;
             try (InputStream in = jar.getInputStream(entry)) {
                 bytes = in.readNBytes(ModMetadataParser.MAX_BYTES + 1);
             }
             ModMetadata metadata = ModMetadataParser.parse(bytes,
-                    jarPath.getFileName() + "!/foabic.mod");
+                    jarPath.getFileName() + "!/" + entryName);
             if (!metadata.supports(environment)) {
                 log.log(System.Logger.Level.INFO, "skipping {0}: declares {1}, running {2}",
                         metadata.id(), metadata.environment(), environment);

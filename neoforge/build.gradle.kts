@@ -1,4 +1,3 @@
-
 plugins {
     java
 }
@@ -34,9 +33,11 @@ sourceSets {
 }
 
 tasks.named<Jar>("jar") {
-    dependsOn(":api:classes", ":loader:classes")
+    dependsOn(":api:classes", ":content:classes", ":loader:classes")
     from(rootProject.project(":api").layout.buildDirectory.dir("classes/java/main"))
     from(rootProject.project(":api").layout.buildDirectory.dir("resources/main"))
+    from(rootProject.project(":content").layout.buildDirectory.dir("classes/java/main"))
+    from(rootProject.project(":content").layout.buildDirectory.dir("resources/main"))
     from(rootProject.project(":loader").layout.buildDirectory.dir("classes/java/main"))
     from(rootProject.project(":loader").layout.buildDirectory.dir("resources/main"))
     from(rootProject.file("LICENSE"))

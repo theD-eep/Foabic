@@ -1,6 +1,6 @@
 # Build
 
-Foabic 1.1 uses a **Gradle 9.5.1** wrapper. There is no project-local `.cmd` or `.ps1` build entry point. `gradlew.bat` / `gradlew` are the standard Gradle wrapper.
+Foabic 1.2 uses a **Gradle 9.5.1** wrapper. There is no project-local `.cmd` or `.ps1` build entry point. `gradlew.bat` / `gradlew` are the standard Gradle wrapper.
 
 ## Requirements
 
@@ -24,48 +24,78 @@ export JAVA_HOME=/path/to/jdk-25
 ./gradlew build
 ```
 
-This compiles all modules, runs the core tests, packages five jars and copies them to `dist/`.
+This compiles all modules, runs the core tests and the API contract check, packages the platform/example jars and copies the release artifacts to `dist/`.
 
 ## Tasks
 
 | Task | Purpose |
 | --- | --- |
-| `build` | Full build, tests and `dist` |
-| `dist` | Copy the five release jars into `dist/` and write `dist/SHA256SUMS` |
-| `coreTest` | Run event/version/signal, defensive-loader and resource-generation tests |
-| `:api:jar` | Compile-time API only |
-| `:fabric:jar` | Fabric adapter, including API and loader classes |
-| `:neoforge:jar` | NeoForge adapter, including API and loader classes |
-| `:examples:minimal:jar` | v1.1 acceptance mod |
+| `build` | Full build, tests, `dist` |
+| `dist` | Copy the six release jars into `dist/` and write `dist/SHA256SUMS` |
+| `coreTest` | Run lifecycle, freeze, metadata, config, networking and loader tests |
+| `:api:check` | Verify the core API jar is under 15 KiB and has no platform imports |
+| `:api:jar` | Compile-time core API |
+| `:content:jar` | Minecraft-facing API |
+| `:fabric:jar` | Fabric adapter, including API + content + loader |
+| `:neoforge:jar` | NeoForge adapter, including API + content + loader |
+| `:examples:minimal:jar` | v1.2 acceptance mod |
 | `:examples:chat:jar` | Chat reply example |
+| `:examples:plugin-demo:build` | One-source-tree Foabic Loom demo; writes its own `dist/` |
 | `clean` | Delete Gradle outputs and `dist/` |
+
+`gradlew.bat :examples:plugin-demo:build` proves the plugin path:
+
+```text
+examples/plugin-demo/dist/mod-fabric.jar
+examples/plugin-demo/dist/mod-neoforge.jar
+```
 
 ## Projects
 
 ```text
-:api        Java library, Minecraft content types on the compile classpath
-:loader     Java library, depends on :api; compiles against Minecraft for loader tests
-:fabric     Fabric Loom adapter
-:neoforge   NeoForge adapter
-:examples:minimal  acceptance mod
-:examples:chat     chat reply example
+:api            tiny core API; no Minecraft or platform dependency
+:content        Minecraft-facing API: registry, signals, resource helpers
+:loader         loader, metadata, config and generated resources
+:fabric         Fabric Loom adapter
+:neoforge       NeoForge adapter
+:examples:minimal     v1.2 acceptance mod
+:examples:chat        chat reply example
+:examples:plugin-demo Foabic Loom demo
 ```
+
+The core/content split exists to satisfy the 15 KiB core limit. Both are bundled into the platform jars, so runtime installation is still one jar.
 
 Source layout:
 
 ```text
 src/api/java
+src/content/java
 src/loader/java
 src/fabric/java
 src/fabric/resources
 src/neoforge/java
 src/neoforge/resources
-examples/minimal/src/main/java
-examples/minimal/src/main/resources
-examples/chat/src/main/java
-examples/chat/src/main/resources
 src/test/java
+foabic-gradle-plugin/src/main/java
+examples/minimal/src/main/{java,resources}
+examples/chat/src/main/{java,resources}
+examples/plugin-demo/src/main/{java,resources}
 ```
+
+## API contract check
+
+`:api:check` runs `verifyApiContract`:
+
+```text
+FOABIC_API_SIZE bytes=14420 limit=15360
+```
+
+It fails if:
+
+- `foabic-api-1.2.0.jar` is 15 KiB or larger;
+- any source under `src/api` or `src/content` contains `net.fabricmc.*` or `net.neoforged.*`.
+
+The core API is compiled with debug information disabled and a reproducible jar.
 
 ## Platform plugins
 
@@ -96,6 +126,33 @@ This avoids NeoForm/NFRT downloads. In an environment with access to `maven.neof
 
 The adapter registers a fixed `PathPackResources` through `AddPackFindersEvent` for generated resources.
 
+## Foabic Loom
+
+`foabic-gradle-plugin/` is an included build. A consuming project can use:
+
+```kotlin
+// settings.gradle.kts
+pluginManagement {
+    includeBuild("foabic-gradle-plugin")
+}
+```
+
+```kotlin
+// build.gradle.kts
+plugins {
+    java
+    id("dev.foabic.loom")
+}
+
+foabic {
+    minecraftVersion = "26.3"
+}
+```
+
+The plugin compiles the single `main` source set once and produces `dist/mod-fabric.jar` and `dist/mod-neoforge.jar`. It reads `src/main/resources/foabic.mod.json`, translates it to `fabric.mod.json` / `META-INF/neoforge.mods.toml`, and embeds the canonical metadata as a custom field. If `src/main/resources/icon.png` exists, or `foabic.mod.json` declares an `icon` path, the icon is injected as Fabric's `icon` and NeoForge's `logoFile`.
+
+The plugin does not provision a Minecraft development environment. Add the Foabic content API and the Minecraft compile classpath in the normal way; the plugin owns packaging and metadata translation.
+
 ## Local input cache
 
 The build reads these existing inputs:
@@ -117,13 +174,33 @@ The build reads these existing inputs:
 
 `gradlew.bat coreTest` runs `dev.foabic.test.AllTests` on the platform-neutral test classpath. It covers:
 
-- event priority/close behavior and listener failure isolation;
-- version/range parsing;
-- legacy and v1.1 signal data classes;
+- event dispatch, unsubscribe and clear;
+- listener failure isolation;
+- version/range parsing, including NeoForge's four-part `26.3.0.115`;
+- legacy and v1.2 signal data classes;
+- network encode/decode/dispatch with a fake transport;
 - duplicate-id discovery and malformed-metadata skipping;
+- JSON `foabic.mod.json` parsing;
 - missing Fabric API dependency diagnostics and provided-version resolution;
+- registry-freeze exception and exact ERROR line;
+- config POJO/record save and reload;
 - generated blockstate/model/texture copy and missing-texture fallback.
 
-The test classpath includes Minecraft and the loader because the public API types and defensive-loader fixtures reference Minecraft classes. No client is started.
+Expected tail:
 
-See [VERIFICATION.md](VERIFICATION.md) for the runtime evidence produced from the Gradle-built jars.
+```text
+PASS events
+PASS failure isolation
+PASS versions
+PASS legacy use-block signal
+PASS player-interact-block signal
+PASS player-break-block signal
+PASS server-tick signal
+PASS networking round trip
+PASS loader defenses
+ALL TESTS PASSED (9)
+```
+
+The test classpath includes Minecraft and the loader because the content and defensive-loader fixtures reference Minecraft classes. No client is started.
+
+See [VERIFICATION.md](VERIFICATION.md) for the dedicated-server evidence.

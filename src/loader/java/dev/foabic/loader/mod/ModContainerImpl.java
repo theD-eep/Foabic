@@ -3,7 +3,6 @@ package dev.foabic.loader.mod;
 import dev.foabic.api.mod.Environment;
 import dev.foabic.api.mod.ModContainer;
 import dev.foabic.api.mod.ModMetadata;
-import dev.foabic.api.version.Version;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -28,11 +27,11 @@ public final class ModContainerImpl implements ModContainer {
 
     @Override public String id() { return metadata.id(); }
     @Override public String name() { return metadata.name(); }
-    @Override public Version version() { return metadata.version(); }
+    @Override public String version() { return metadata.version(); }
     @Override public String description() { return metadata.description(); }
     @Override public List<String> authors() { return metadata.authors(); }
-    @Override public Environment environment() { return metadata.environment(); }
-    @Override public ModMetadata metadata() { return metadata; }
+    public Environment environment() { return metadata.environment(); }
+    public ModMetadata metadata() { return metadata; }
     @Override public Path jar() { return jar; }
     @Override public Path dataDirectory() { return dataDirectory; }
     @Override public System.Logger logger() { return logger; }

@@ -1,6 +1,7 @@
 package dev.foabic.fabric;
 
 import dev.foabic.api.Foabic;
+import dev.foabic.api.internal.FoabicInternal;
 import dev.foabic.api.signal.ChatMessageSignal;
 import dev.foabic.api.signal.PlayerBreakBlockSignal;
 import dev.foabic.api.signal.PlayerInteractBlockSignal;
@@ -30,6 +31,8 @@ import net.minecraft.world.phys.BlockHitResult;
 /** Fabric implementation of the Foabic signal and interaction bridges. */
 final class FabricSignals {
 
+    private static final System.Logger LOG = System.getLogger("Foabic/fabric");
+
     private FabricSignals() {
     }
 
@@ -37,6 +40,13 @@ final class FabricSignals {
         ServerLifecycleEvents.SERVER_STARTED.register(server ->
                 Foabic.events().post(new ServerStartedSignal(
                         FoabicFabric.PLATFORM, Foabic.MINECRAFT, Foabic.mods().size())));
+
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+            FoabicInternal.onServerStopped();
+            LOG.log(System.Logger.Level.INFO,
+                    "FOABIC_STOP_CLEAN platform=fabric tick_listeners={0}",
+                    Foabic.events().hasListeners(ServerTickSignal.class));
+        });
 
         ServerTickEvents.END_SERVER_TICK.register(server ->
                 Foabic.events().post(new ServerTickSignal(

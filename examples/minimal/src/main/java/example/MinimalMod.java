@@ -1,10 +1,14 @@
 package example;
 
+import dev.foabic.api.event.FoabicSubscription;
 import dev.foabic.api.mod.ModContext;
 import dev.foabic.api.mod.ModInitializer;
+import dev.foabic.api.network.FoabicPacket;
+import dev.foabic.api.network.NetworkManager;
 import dev.foabic.api.registry.BlockEntityRegistration;
 import dev.foabic.api.registry.BlockItemRegistration;
 import dev.foabic.api.registry.FoabicRegistries;
+import dev.foabic.api.registry.FoabicRegistryFrozenException;
 import dev.foabic.api.registry.Registration;
 import dev.foabic.api.signal.PlayerBreakBlockSignal;
 import dev.foabic.api.signal.PlayerInteractBlockSignal;
@@ -23,16 +27,16 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
- * The Foabic 1.1 acceptance mod.
+ * The Foabic 1.2 acceptance mod.
  *
- * <p>It exercises the expanded content surface (block + automatic BlockItem,
- * BlockEntity and SoundEvent), the generated block model path, and all three
- * new signals. The same jar runs on Fabric and NeoForge; content factories are
- * evaluated in each platform's registration window.
+ * <p>It exercises content registration, the generated model path, all v1.1
+ * signals, config loading, packet registration and explicit subscription
+ * removal. The same jar runs on Fabric and NeoForge.
  */
 public final class MinimalMod implements ModInitializer {
 
@@ -49,8 +53,6 @@ public final class MinimalMod implements ModInitializer {
     public void onInitialize(ModContext context) {
         ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, MC_ID);
 
-        // The block holds a supplier, not a value: the block is constructed
-        // before the block-entity type exists on both platforms.
         AtomicReference<BlockEntityRegistration<TestBlockEntity>> entityRef =
                 new AtomicReference<>();
 
@@ -71,16 +73,25 @@ public final class MinimalMod implements ModInitializer {
                 () -> SoundEvent.createVariableRangeEvent(
                         Identifier.fromNamespaceAndPath("foabic_test", "test_sound")));
 
-        // The metadata already declares texture=foabic_test:block/test_block.
-        // This one-liner is the code path for a per-block override.
         context.resources().block(BLOCK_ID, "foabic_test:block/test_block");
+
+        TestConfig config = context.config().register(TestConfig.class);
+        config.greeting = "hello-v1.2";
+        context.config().save(config);
+        NetworkManager.register(StatusPacket.class, StatusPacket::new);
 
         context.logger().log(System.Logger.Level.INFO,
                 "FOABIC_REGISTER platform={0} block={1} item={1}",
                 context.platform(), BLOCK_ID);
         context.logger().log(System.Logger.Level.INFO,
-                "FOABIC_V11_REGISTER platform={0} block_entity={1} sound={2}",
+                "FOABIC_V12_REGISTER platform={0} block_entity={1} sound={2}",
                 context.platform(), ENTITY_ID, SOUND_ID);
+        context.logger().log(System.Logger.Level.INFO,
+                "FOABIC_CONFIG platform={0} greeting={1}",
+                context.platform(), config.greeting);
+        context.logger().log(System.Logger.Level.INFO,
+                "FOABIC_NETWORK platform={0} packet={1}",
+                context.platform(), StatusPacket.class.getName());
 
         context.connect(ServerStartedSignal.class, signal -> {
             boolean blockPresent = FoabicRegistries.BLOCKS.get(BLOCK_ID).isPresent();
@@ -94,15 +105,33 @@ public final class MinimalMod implements ModInitializer {
                     "FOABIC_STATUS platform={0} block_registered={1} item_registered={2} "
                             + "block_entity_registered={3} sound_registered={4}",
                     context.platform(), blockPresent, itemPresent, entityPresent, soundPresent);
+            try {
+                context.submit(FoabicRegistries.ITEMS,
+                        ResourceLocation.of("foabic_test", "late_item"), () -> null);
+                context.logger().log(System.Logger.Level.ERROR,
+                        "FOABIC_FROZEN_GUARD platform={0} caught=false", context.platform());
+            } catch (FoabicRegistryFrozenException expected) {
+                context.logger().log(System.Logger.Level.INFO,
+                        "FOABIC_FROZEN_GUARD platform={0} caught=true object={1}",
+                        context.platform(), expected.objectId());
+            }
         });
 
-        context.connect(ServerTickSignal.class, signal -> {
+        AtomicReference<FoabicSubscription> tickSubscription = new AtomicReference<>();
+        tickSubscription.set(context.connect(ServerTickSignal.class, signal -> {
             if (signal.tick() == 20L) {
                 context.logger().log(System.Logger.Level.INFO,
                         "FOABIC_TICK platform={0} tick={1} players={2}",
                         signal.platform(), signal.tick(), signal.playerCount());
             }
-        });
+            if (signal.tick() == 40L) {
+                FoabicSubscription subscription = tickSubscription.get();
+                if (subscription != null) subscription.unsubscribe();
+                context.logger().log(System.Logger.Level.INFO,
+                        "FOABIC_UNSUBSCRIBE platform={0} tick={1}",
+                        signal.platform(), signal.tick());
+            }
+        }));
 
         context.connect(PlayerInteractBlockSignal.class, signal -> {
             if (!signal.block().equals(BLOCK_ID)) return;
@@ -124,7 +153,33 @@ public final class MinimalMod implements ModInitializer {
                 context.platform(), sound.id());
     }
 
-    /** A minimal block with a block entity. */
+    /** Mutable config with real defaults for the first run. */
+    public static final class TestConfig {
+        public String greeting = "hello";
+        public int exampleNumber = 42;
+
+        public TestConfig() {
+        }
+    }
+
+    /** Registered with the network subsystem; the dedicated acceptance server has no peer. */
+    public static final class StatusPacket implements FoabicPacket {
+        private String text = "";
+
+        public StatusPacket() {
+        }
+
+        @Override
+        public byte[] encode() {
+            return text.getBytes(StandardCharsets.UTF_8);
+        }
+
+        @Override
+        public void decode(byte[] data) {
+            text = new String(data, StandardCharsets.UTF_8);
+        }
+    }
+
     public static final class TestBlock extends BaseEntityBlock {
 
         private final Supplier<BlockEntityType<TestBlockEntity>> type;
@@ -140,7 +195,6 @@ public final class MinimalMod implements ModInitializer {
         }
     }
 
-    /** A no-data block entity used to prove the block/type binding. */
     public static final class TestBlockEntity extends BlockEntity {
 
         public TestBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {

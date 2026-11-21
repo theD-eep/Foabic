@@ -1,11 +1,12 @@
 {
   "schemaVersion": 1,
   "id": "foabic",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "name": "Foabic",
-  "description": "Foabic 1.1: a small platform-neutral mod API for Minecraft 26.3. Fabric adapter.",
+  "description": "Foabic 1.2: a small platform-neutral mod API for Minecraft 26.3. Fabric adapter.",
   "authors": ["Foabic contributors"],
   "license": "MIT",
+  "icon": "icon.png",
   "environment": "*",
   "entrypoints": {
     "main": ["dev.foabic.fabric.FoabicFabric"]

@@ -1,21 +1,23 @@
 package dev.foabic.test;
 
 import dev.foabic.api.event.EventBus;
-import dev.foabic.api.event.EventPriority;
-import dev.foabic.api.event.EventSubscription;
+import dev.foabic.api.event.FoabicSubscription;
+import dev.foabic.api.network.FoabicPacket;
+import dev.foabic.api.network.NetworkManager;
 import dev.foabic.api.signal.PlayerBreakBlockSignal;
 import dev.foabic.api.signal.PlayerInteractBlockSignal;
 import dev.foabic.api.signal.ServerTickSignal;
 import dev.foabic.api.signal.UseBlockSignal;
 import dev.foabic.api.util.BlockPos;
 import dev.foabic.api.util.ResourceLocation;
-import dev.foabic.api.version.Version;
-import dev.foabic.api.version.VersionRange;
 import dev.foabic.loader.LoaderDefensiveTests;
+import dev.foabic.loader.version.Version;
+import dev.foabic.loader.version.VersionRange;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Small platform-neutral tests, run by the Gradle {@code :coreTest} task. */
 public final class AllTests {
@@ -33,6 +35,7 @@ public final class AllTests {
         testPlayerInteractBlockSignal();
         testPlayerBreakBlockSignal();
         testServerTickSignal();
+        testNetworkRoundTrip();
         LoaderDefensiveTests.run();
         pass("loader defenses");
         System.out.println("ALL TESTS PASSED (" + passed + ")");
@@ -41,17 +44,26 @@ public final class AllTests {
     private static void testEventOrderAndClose() {
         EventBus bus = new EventBus();
         List<String> order = new ArrayList<>();
-        bus.subscribe(String.class, EventPriority.LOW, event -> order.add("low"));
-        EventSubscription normal = bus.subscribe(String.class, event -> order.add("normal"));
-        bus.subscribe(String.class, EventPriority.HIGH, event -> order.add("high"));
+        bus.subscribe(String.class, event -> order.add("first"));
+        FoabicSubscription second = bus.subscribe(String.class, event -> order.add("second"));
+        bus.subscribe(String.class, event -> order.add("third"));
 
         bus.post("first");
-        check(order.equals(List.of("high", "normal", "low")), "priority order: " + order);
+        check(order.equals(List.of("first", "second", "third")), "subscription order: " + order);
 
-        normal.close();
+        second.unsubscribe();
+        second.unsubscribe();
         order.clear();
         bus.post("second");
-        check(order.equals(List.of("high", "low")), "closed listener ran: " + order);
+        check(order.equals(List.of("first", "third")), "closed listener ran: " + order);
+        check(bus.hasListeners(String.class), "other listeners removed");
+
+        AtomicInteger afterClear = new AtomicInteger();
+        bus.subscribe(String.class, event -> afterClear.incrementAndGet());
+        bus.clear();
+        bus.post("third");
+        check(afterClear.get() == 0, "cleared listener ran");
+        check(!bus.hasListeners(String.class), "clear left listeners");
         pass("events");
     }
 
@@ -80,6 +92,8 @@ public final class AllTests {
                 "range endpoint");
         check(!VersionRange.parse(">=1.0.0 <2.0.0").test(Version.parse("2.0.0")),
                 "exclusive upper endpoint");
+        check(Version.parse("26.3.0.115").equals(Version.parse("26.3.0")),
+                "four-part platform version");
         pass("versions");
     }
 
@@ -131,6 +145,59 @@ public final class AllTests {
         check(signal.playerCount() == 2, "player count");
         check(signal.platform().equals("fabric"), "platform");
         pass("server-tick signal");
+    }
+
+    private static void testNetworkRoundTrip() {
+        AtomicReference<byte[]> sent = new AtomicReference<>();
+        NetworkManager.reset();
+        NetworkManager.bind(new NetworkManager.Transport() {
+            @Override
+            public void sendToServer(String type, byte[] data) {
+                sent.set(data);
+            }
+
+            @Override
+            public void sendToClient(Object player, String type, byte[] data) {
+                throw new AssertionError("not used");
+            }
+        });
+        NetworkManager.register(TestPacket.class, TestPacket::new);
+        NetworkManager.sendToServer(new TestPacket("hello"));
+        check(sent.get() != null, "packet was not sent");
+
+        NetworkManager.receive(TestPacket.class.getName(), sent.get());
+        // The fake transport only records; receive decodes into the registered
+        // factory instance and calls handle, which is checked by the class.
+        check(TestPacket.lastHandled.equals("hello"), "packet decode/handle failed: " + TestPacket.lastHandled);
+        NetworkManager.reset();
+        pass("networking round trip");
+    }
+
+    public static final class TestPacket implements FoabicPacket {
+        static volatile String lastHandled;
+        private String value;
+
+        public TestPacket() {
+        }
+
+        TestPacket(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public byte[] encode() {
+            return value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+
+        @Override
+        public void decode(byte[] data) {
+            value = new String(data, java.nio.charset.StandardCharsets.UTF_8);
+        }
+
+        @Override
+        public void handle() {
+            lastHandled = value;
+        }
     }
 
     private static void pass(String name) {

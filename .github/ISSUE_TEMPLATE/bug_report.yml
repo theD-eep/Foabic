@@ -45,7 +45,7 @@ body:
     id: foabic
     attributes:
       label: Foabic version
-      placeholder: 1.1.0
+      placeholder: 1.2.0
     validations:
       required: true
 

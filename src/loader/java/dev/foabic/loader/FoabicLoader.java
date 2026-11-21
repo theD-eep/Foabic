@@ -8,6 +8,7 @@ import dev.foabic.api.mod.ModContainer;
 import dev.foabic.api.mod.ModInitializer;
 import dev.foabic.api.mod.ModMetadata;
 import dev.foabic.api.registry.FoabicCreativeTabs;
+import dev.foabic.api.registry.FoabicRegistries;
 import dev.foabic.loader.mod.ModClassLoader;
 import dev.foabic.loader.mod.ModContainerImpl;
 import dev.foabic.loader.mod.ModContextImpl;
@@ -76,6 +77,7 @@ public final class FoabicLoader {
                 .toList();
         Path stateRoot = gameDir.resolve(".foabic");
         long started = System.nanoTime();
+        FoabicRegistries.beginRegistration();
         try {
             Files.createDirectories(stateRoot.resolve("data"));
         } catch (IOException e) {
@@ -117,7 +119,7 @@ public final class FoabicLoader {
         }
 
         List<ModContainer> publicContainers = List.copyOf(containers);
-        LoaderRuntime runtime = new LoaderRuntime(platform, environment, gameDir, publicContainers);
+        LoaderRuntime runtime = new LoaderRuntime(platform, gameDir, publicContainers);
         FoabicInternal.install(runtime);
 
         List<ModContextImpl> contexts = new ArrayList<>(containers.size());
@@ -129,6 +131,8 @@ public final class FoabicLoader {
             FoabicCreativeTabs.freeze();
         } catch (Throwable failure) {
             FoabicInternal.uninstall(runtime);
+            FoabicRegistries.unbindAll();
+            FoabicCreativeTabs.clear();
             try {
                 classLoader.close();
             } catch (IOException ignored) {
@@ -195,7 +199,7 @@ public final class FoabicLoader {
         String missing = error.getMessage() == null ? "<unknown>" : error.getMessage();
         return "mod '" + metadata.id() + "' entrypoint '" + entrypoint
                 + "' is missing class " + missing.replace('/', '.')
-                + ". Declare the mod that owns this class in foabic.mod (depends=id@range) "
+                + ". Declare the mod that owns this class in foabic.mod.json (depends={id: range}) "
                 + "and install it; this is a dependency problem, not a Foabic crash.";
     }
 }

@@ -1,6 +1,5 @@
 package dev.foabic.api.event;
 
-import java.util.Comparator;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -10,6 +9,10 @@ import java.util.function.Consumer;
 /**
  * A small synchronous, exact-type event bus. No reflection or annotation
  * scanning; listeners run on the thread that posts the event.
+ *
+ * <p>{@link #clear()} removes every listener and is called by the platform
+ * adapters on server stop. A cleared subscription releases its listener even
+ * if the mod still holds the handle.
  */
 public final class EventBus {
 
@@ -27,20 +30,13 @@ public final class EventBus {
         this.errorHandler = Objects.requireNonNull(errorHandler, "errorHandler");
     }
 
-    public <E> EventSubscription subscribe(Class<E> type, EventListener<? super E> listener) {
-        return subscribe(type, EventPriority.NORMAL, listener);
-    }
-
-    public <E> EventSubscription subscribe(Class<E> type, EventPriority priority,
-                                           EventListener<? super E> listener) {
+    public <E> FoabicSubscription subscribe(Class<E> type, Consumer<? super E> listener) {
         Objects.requireNonNull(type, "type");
-        Objects.requireNonNull(priority, "priority");
         Objects.requireNonNull(listener, "listener");
         CopyOnWriteArrayList<Listener<?>> list =
                 listeners.computeIfAbsent(type, ignored -> new CopyOnWriteArrayList<>());
-        Listener<E> entry = new Listener<>(priority, listener);
+        Listener<E> entry = new Listener<>(listener);
         list.add(entry);
-        list.sort(Comparator.comparingInt(value -> value.priority.ordinal()));
         return new Subscription(type, entry);
     }
 
@@ -50,9 +46,10 @@ public final class EventBus {
         CopyOnWriteArrayList<Listener<?>> list = listeners.get(event.getClass());
         if (list == null) return event;
         for (Listener<?> entry : list) {
-            if (!entry.active) continue;
+            Consumer<Object> action = (Consumer<Object>) entry.action;
+            if (action == null) continue;
             try {
-                ((EventListener<Object>) entry.action).onEvent(event);
+                action.accept(event);
             } catch (Throwable failure) {
                 report(failure);
             }
@@ -66,9 +63,10 @@ public final class EventBus {
         return list != null && !list.isEmpty();
     }
 
+    /** Removes every listener and releases their callbacks. */
     public void clear() {
         for (CopyOnWriteArrayList<Listener<?>> list : listeners.values()) {
-            for (Listener<?> entry : list) entry.active = false;
+            for (Listener<?> entry : list) entry.action = null;
         }
         listeners.clear();
     }
@@ -81,7 +79,7 @@ public final class EventBus {
         }
     }
 
-    private final class Subscription implements EventSubscription {
+    private final class Subscription implements FoabicSubscription {
         private final Class<?> type;
         private final Listener<?> entry;
         private final AtomicBoolean closed = new AtomicBoolean();
@@ -92,9 +90,9 @@ public final class EventBus {
         }
 
         @Override
-        public void close() {
+        public void unsubscribe() {
             if (!closed.compareAndSet(false, true)) return;
-            entry.active = false;
+            entry.action = null;
             CopyOnWriteArrayList<Listener<?>> list = listeners.get(type);
             if (list != null) {
                 list.remove(entry);
@@ -104,12 +102,9 @@ public final class EventBus {
     }
 
     private static final class Listener<E> {
-        private final EventPriority priority;
-        private final EventListener<? super E> action;
-        private volatile boolean active = true;
+        private volatile Consumer<? super E> action;
 
-        private Listener(EventPriority priority, EventListener<? super E> action) {
-            this.priority = priority;
+        private Listener(Consumer<? super E> action) {
             this.action = action;
         }
     }

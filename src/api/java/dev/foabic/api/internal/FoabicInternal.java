@@ -1,7 +1,6 @@
 package dev.foabic.api.internal;
 
-import dev.foabic.api.registry.FoabicCreativeTabs;
-import dev.foabic.api.registry.FoabicRegistries;
+import dev.foabic.api.network.NetworkManager;
 
 import java.util.Objects;
 
@@ -33,11 +32,23 @@ public final class FoabicInternal {
         return runtime != null;
     }
 
+    /**
+     * Ends a server session. Both adapters call this from their native
+     * server-stopped event; listeners registered during the session are
+     * released immediately.
+     */
+    public static void onServerStopped() {
+        FoabicRuntime current = runtime;
+        if (current != null) {
+            current.events().clear();
+        }
+    }
+
     public static synchronized void uninstall(FoabicRuntime expected) {
         if (runtime == expected) {
             runtime = null;
-            FoabicRegistries.unbindAll();
-            FoabicCreativeTabs.clear();
+            expected.events().clear();
+            NetworkManager.reset();
         }
     }
 }

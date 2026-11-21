@@ -8,7 +8,7 @@ val minecraftLibraries = rootProject.fileTree(".cache/mc-bundle-libs/META-INF/li
 }
 
 dependencies {
-    implementation(project(":api"))
+    implementation(project(":content"))
     compileOnly(files(minecraftJar))
     compileOnly(minecraftLibraries)
 }

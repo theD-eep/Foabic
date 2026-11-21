@@ -10,7 +10,7 @@ plugins {
 
 allprojects {
     group = "dev.foabic"
-    version = "1.1.0"
+    version = "1.2.0"
 }
 
 subprojects {
@@ -46,6 +46,7 @@ sourceSets {
 
 dependencies {
     testImplementation(project(":api"))
+    testImplementation(project(":content"))
     testImplementation(project(":loader"))
     testImplementation(files(minecraftJar))
     testImplementation(minecraftLibraries)
@@ -64,24 +65,26 @@ tasks.named<Test>("test") {
 }
 
 tasks.named("check") {
-    dependsOn(coreTest)
+    dependsOn(coreTest, ":api:check")
 }
 
-val apiJar = project(":api").layout.buildDirectory.file("libs/foabic-api-1.1.0.jar")
-val fabricJar = project(":fabric").layout.buildDirectory.file("libs/foabic-fabric-1.1.0.jar")
-val neoForgeJar = project(":neoforge").layout.buildDirectory.file("libs/foabic-neoforge-1.1.0.jar")
-val exampleJar = project(":examples:minimal").layout.buildDirectory.file("libs/foabic-example-minimal-1.1.0.jar")
-val exampleChatJar = project(":examples:chat").layout.buildDirectory.file("libs/foabic-example-chat-1.1.0.jar")
+val apiJar = project(":api").layout.buildDirectory.file("libs/foabic-api-1.2.0.jar")
+val contentJar = project(":content").layout.buildDirectory.file("libs/foabic-content-1.2.0.jar")
+val fabricJar = project(":fabric").layout.buildDirectory.file("libs/foabic-fabric-1.2.0.jar")
+val neoForgeJar = project(":neoforge").layout.buildDirectory.file("libs/foabic-neoforge-1.2.0.jar")
+val exampleJar = project(":examples:minimal").layout.buildDirectory.file("libs/foabic-example-minimal-1.2.0.jar")
+val exampleChatJar = project(":examples:chat").layout.buildDirectory.file("libs/foabic-example-chat-1.2.0.jar")
 
 val dist by tasks.registering(Copy::class) {
     group = "build"
     description = "Copies the release jars and checksums into the root dist/ directory."
-    dependsOn(":api:jar", ":fabric:jar", ":neoforge:jar",
+    dependsOn(":api:jar", ":content:jar", ":fabric:jar", ":neoforge:jar",
         ":examples:minimal:jar", ":examples:chat:jar")
     doFirst {
         delete(layout.projectDirectory.dir("dist"))
     }
     from(apiJar)
+    from(contentJar)
     from(fabricJar)
     from(neoForgeJar)
     from(exampleJar)

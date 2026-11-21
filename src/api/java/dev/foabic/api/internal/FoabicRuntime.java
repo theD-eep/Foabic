@@ -1,7 +1,6 @@
 package dev.foabic.api.internal;
 
 import dev.foabic.api.event.EventBus;
-import dev.foabic.api.mod.Environment;
 import dev.foabic.api.mod.ModContainer;
 
 import java.nio.file.Path;
@@ -14,8 +13,6 @@ public interface FoabicRuntime {
     String platform();
 
     EventBus events();
-
-    Environment environment();
 
     Path gameDirectory();
 

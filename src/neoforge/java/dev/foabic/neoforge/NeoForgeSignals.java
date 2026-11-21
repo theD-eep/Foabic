@@ -26,12 +26,21 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 /** NeoForge implementation of the Foabic signal and interaction bridges. */
 final class NeoForgeSignals {
 
+    private static final System.Logger LOG = System.getLogger("Foabic/neoforge");
+
     private NeoForgeSignals() {
     }
 
     static void onServerStarted(net.neoforged.neoforge.event.server.ServerStartedEvent event) {
         Foabic.events().post(new ServerStartedSignal(
                 FoabicNeoForge.PLATFORM, Foabic.MINECRAFT, Foabic.mods().size()));
+    }
+
+    static void onServerStopped(net.neoforged.neoforge.event.server.ServerStoppedEvent event) {
+        dev.foabic.api.internal.FoabicInternal.onServerStopped();
+        LOG.log(System.Logger.Level.INFO,
+                "FOABIC_STOP_CLEAN platform=neoforge tick_listeners={0}",
+                Foabic.events().hasListeners(ServerTickSignal.class));
     }
 
     static void onServerTick(ServerTickEvent.Post event) {

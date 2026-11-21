@@ -1,5 +1,6 @@
 package dev.foabic.loader.mod;
 
+import dev.foabic.api.config.ConfigManager;
 import dev.foabic.api.event.EventBus;
 import dev.foabic.api.internal.FoabicRuntime;
 import dev.foabic.api.mod.Environment;
@@ -10,6 +11,7 @@ import dev.foabic.api.registry.Registration;
 import dev.foabic.api.registry.Registry;
 import dev.foabic.api.resource.ModResources;
 import dev.foabic.api.util.ResourceLocation;
+import dev.foabic.loader.config.ConfigManagerImpl;
 import dev.foabic.loader.resource.BlockModelRequest;
 import dev.foabic.loader.resource.ItemModelRequest;
 
@@ -29,6 +31,7 @@ public final class ModContextImpl implements ModContext, ModResources {
 
     private final FoabicRuntime runtime;
     private final ModContainerImpl container;
+    private final ConfigManager config;
     private final Set<ResourceLocation> registeredBlocks = new LinkedHashSet<>();
     private final Map<ResourceLocation, BlockModelRequest> blockRequests = new LinkedHashMap<>();
     private final Map<ResourceLocation, ItemModelRequest> itemRequests = new LinkedHashMap<>();
@@ -36,17 +39,21 @@ public final class ModContextImpl implements ModContext, ModResources {
     public ModContextImpl(FoabicRuntime runtime, ModContainerImpl container) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.container = Objects.requireNonNull(container, "container");
+        this.config = new ConfigManagerImpl(runtime.gameDirectory(), container.id(),
+                container.logger());
     }
 
     @Override public ModContainer mod() { return container; }
     @Override public EventBus events() { return runtime.events(); }
-    @Override public Environment environment() { return runtime.environment(); }
+    @Override public Environment environment() { return container.environment(); }
     @Override public String platform() { return runtime.platform(); }
     @Override public System.Logger logger() { return container.logger(); }
+    @Override public ConfigManager config() { return config; }
 
     @Override
     public <T> Registration<T> submit(Registry<T> registry, ResourceLocation id,
                                       Supplier<? extends T> factory) {
+        FoabicRegistries.checkOpen(container.id(), id, logger());
         Registration<T> registration = ModContext.super.submit(registry, id, factory);
         if (registry == FoabicRegistries.BLOCKS) {
             registeredBlocks.add(Objects.requireNonNull(id, "id"));
