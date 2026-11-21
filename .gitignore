@@ -1,25 +1,9 @@
-# Build outputs
 build/
-
-# Local runtime state
 run/
 client-run/
-.foabic/
-foabic-mods/
-server.jar
-eula.txt
-logs/
-world/
-world_*/
 screenshots/
 *.log
-
-# IDE
 .idea/
 .vscode/
 *.iml
-
-# OS
 .DS_Store
-Thumbs.db
-desktop.ini

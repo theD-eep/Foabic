@@ -43,20 +43,6 @@ dist/foabic-example-smoketest-0.2.0.jar    7.5 KiB   runnable block/signal examp
 
 No runtime dependency is bundled beyond the JDK and Fabric API.
 
-## Repository layout
-
-```text
-src/api/java         dev.foabic.api.*      public API, no Minecraft or Fabric classes
-src/loader/java      dev.foabic.loader.*   discovery, dependencies, events, commands, scheduler
-src/fabric/java      dev.foabic.fabric.*   Fabric Loader/API adapter, registry bridge, signals
-src/fabric/resources/fabric.mod.json       Fabric metadata of the adapter jar
-src/test/java        dev.foabic.test.*     plain-Java test suite, no JUnit
-examples/smoketest   runnable block + signal example
-examples/client-test manual client verification harness (not a user mod)
-docs/                API, Fabric adapter, verification, roadmap
-dist/                built jars committed with this beta
-```
-
 ## Install
 
 Prerequisites:
@@ -169,14 +155,6 @@ Details: [docs/VERIFICATION.md](docs/VERIFICATION.md).
 ## Status
 
 `0.2.0` is a Beta preview for Minecraft **26.1** and Fabric. It is not binary-compatible across 0.x. Do not add NeoForge, a signal library, Mixin, or a build plugin to this branch; they belong to 0.3+.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and the build notes above. Report security issues privately via [SECURITY.md](SECURITY.md), not in a public issue.
-
-## Disclaimer
-
-Foabic is an independent third-party project, not affiliated with or endorsed by Mojang Studios, Microsoft or the Fabric project. "Minecraft" is a trademark of Mojang Studios. This repository contains no Minecraft game files and does not redistribute Fabric Loader or Fabric API; obtain those yourself.
 
 ## License
 
