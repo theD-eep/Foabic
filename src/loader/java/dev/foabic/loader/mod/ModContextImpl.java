@@ -20,33 +20,10 @@ public final class ModContextImpl implements ModContext {
         this.container = Objects.requireNonNull(container, "container");
     }
 
-    @Override
-    public ModContainer mod() {
-        return container;
-    }
-
-    @Override
-    public EventBus events() {
-        return runtime.events();
-    }
-
-    @Override
-    public Scheduler scheduler() {
-        return runtime.scheduler();
-    }
-
-    @Override
-    public CommandRegistry commands() {
-        return runtime.commands();
-    }
-
-    @Override
-    public Environment environment() {
-        return runtime.environment();
-    }
-
-    @Override
-    public System.Logger logger() {
-        return container.logger();
-    }
+    @Override public ModContainer mod() { return container; }
+    @Override public EventBus events() { return runtime.events(); }
+    @Override public Scheduler scheduler() { return runtime.scheduler(); }
+    @Override public CommandRegistry commands() { return runtime.commands(); }
+    @Override public Environment environment() { return runtime.environment(); }
+    @Override public System.Logger logger() { return container.logger(); }
 }

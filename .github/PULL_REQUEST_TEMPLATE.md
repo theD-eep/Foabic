@@ -1,18 +1,19 @@
-## 改动
+## What changed
 
-<!-- 这个 PR 做了什么？涉及哪些模块（api / loader / mc26 / tools / docs）？ -->
+<!-- Which modules: api / loader / fabric / examples / docs? -->
 
-## 原因
+## Why
 
-<!-- 关联 issue，或说明设计动机 -->
+<!-- Link the issue or explain the motivation -->
 
-## 验证
+## Verification
 
-- [ ] `./build.sh` 或 `build.cmd` 通过，输出 `ALL TESTS PASSED`
-- [ ] 涉及 adapter 的改动已在真实 26.1 服务器验证（说明验证方式）
-- [ ] 公开 API 变更已同步 `docs/API.md` 与 `CHANGELOG.md`
-- [ ] 没有提交 `dist/`、`build/`、`server.jar` 或本地服务器目录
+- [ ] Full build passes and the suite prints `ALL TESTS PASSED`
+- [ ] Adapter changes were exercised on a real Fabric 26.1 client and/or server (describe how)
+- [ ] Public API changes updated `docs/API.md` and `CHANGELOG.md`
+- [ ] No `build/`, `run/`, `client-run/`, `server.jar` or game files are included
+- [ ] `dist/` jars were not touched by hand (maintainers rebuild them at release)
 
-## 备注
+## Notes
 
-<!-- 迁移说明、已知限制、后续工作 -->
+<!-- Migration notes, known limitations, follow-up work -->

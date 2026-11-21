@@ -22,13 +22,8 @@ public final class ModContainerImpl implements ModContainer {
     private final ModResourcesImpl resources;
     private volatile Config config;
 
-    public ModContainerImpl(
-            ModMetadata metadata,
-            Path jar,
-            Path dataDirectory,
-            Path configPath,
-            ClassLoader classLoader
-    ) {
+    public ModContainerImpl(ModMetadata metadata, Path jar, Path dataDirectory,
+                            Path configPath, ClassLoader classLoader) {
         this.metadata = Objects.requireNonNull(metadata, "metadata");
         this.jar = Objects.requireNonNull(jar, "jar");
         this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
@@ -38,60 +33,18 @@ public final class ModContainerImpl implements ModContainer {
         this.resources = new ModResourcesImpl(jar);
     }
 
-    @Override
-    public String id() {
-        return metadata.id();
-    }
-
-    @Override
-    public String name() {
-        return metadata.name();
-    }
-
-    @Override
-    public Version version() {
-        return metadata.version();
-    }
-
-    @Override
-    public String description() {
-        return metadata.description();
-    }
-
-    @Override
-    public List<String> authors() {
-        return metadata.authors();
-    }
-
-    @Override
-    public Environment environment() {
-        return metadata.environment();
-    }
-
-    @Override
-    public ModMetadata metadata() {
-        return metadata;
-    }
-
-    @Override
-    public Path jar() {
-        return jar;
-    }
-
-    @Override
-    public Path dataDirectory() {
-        return dataDirectory;
-    }
-
-    @Override
-    public System.Logger logger() {
-        return logger;
-    }
-
-    @Override
-    public ModResources resources() {
-        return resources;
-    }
+    @Override public String id() { return metadata.id(); }
+    @Override public String name() { return metadata.name(); }
+    @Override public Version version() { return metadata.version(); }
+    @Override public String description() { return metadata.description(); }
+    @Override public List<String> authors() { return metadata.authors(); }
+    @Override public Environment environment() { return metadata.environment(); }
+    @Override public ModMetadata metadata() { return metadata; }
+    @Override public Path jar() { return jar; }
+    @Override public Path dataDirectory() { return dataDirectory; }
+    @Override public System.Logger logger() { return logger; }
+    @Override public ModResources resources() { return resources; }
+    @Override public ClassLoader classLoader() { return classLoader; }
 
     @Override
     public Config config() {
@@ -108,17 +61,7 @@ public final class ModContainerImpl implements ModContainer {
         return current;
     }
 
-    @Override
-    public ClassLoader classLoader() {
-        return classLoader;
-    }
-
     public void close() {
         resources.close();
-    }
-
-    @Override
-    public String toString() {
-        return id() + "@" + version();
     }
 }

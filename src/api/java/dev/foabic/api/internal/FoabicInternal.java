@@ -2,9 +2,6 @@ package dev.foabic.api.internal;
 
 import java.util.Objects;
 
-/**
- * Internal installation point. Not part of the public modding API.
- */
 public final class FoabicInternal {
 
     private static volatile FoabicRuntime runtime;
@@ -23,9 +20,7 @@ public final class FoabicInternal {
     public static FoabicRuntime runtime() {
         FoabicRuntime current = runtime;
         if (current == null) {
-            throw new IllegalStateException(
-                    "Foabic is not initialized. Launch the game with the Foabic java agent "
-                            + "(-javaagent:foabic.jar) or call FoabicLoader.load(...) first.");
+            throw new IllegalStateException("Foabic is not initialized");
         }
         return current;
     }
@@ -35,8 +30,6 @@ public final class FoabicInternal {
     }
 
     public static synchronized void uninstall(FoabicRuntime expected) {
-        if (runtime == expected) {
-            runtime = null;
-        }
+        if (runtime == expected) runtime = null;
     }
 }

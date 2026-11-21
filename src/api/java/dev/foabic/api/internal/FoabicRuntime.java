@@ -10,23 +10,13 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Internal bridge between the public facade and the loader. Mods must not
- * implement or call this interface directly.
- */
+/** Internal loader/runtime contract; not part of the mod API. */
 public interface FoabicRuntime {
-
     EventBus events();
-
     Scheduler scheduler();
-
     CommandRegistry commands();
-
     Environment environment();
-
     Path gameDirectory();
-
     List<ModContainer> mods();
-
     Optional<ModContainer> mod(String id);
 }

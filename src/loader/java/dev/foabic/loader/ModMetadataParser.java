@@ -16,23 +16,18 @@ import java.util.List;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
-/**
- * Parses the deliberately tiny {@code foabic.mod} properties format. No JSON
- * parser, no YAML parser, no dependency.
- */
 final class ModMetadataParser {
 
-    static final int MAX_MANIFEST_BYTES = 64 * 1024;
+    static final int MAX_BYTES = 64 * 1024;
     private static final Pattern ID = Pattern.compile("[a-z][a-z0-9_-]{0,63}");
 
     private ModMetadataParser() {
     }
 
     static ModMetadata parse(byte[] bytes, String source) {
-        if (bytes.length > MAX_MANIFEST_BYTES) {
+        if (bytes.length > MAX_BYTES) {
             throw new ModLoadException(source + ": foabic.mod is larger than 64 KiB");
         }
-
         Properties properties = new Properties();
         try (Reader reader = new InputStreamReader(
                 new ByteArrayInputStream(bytes), StandardCharsets.UTF_8)) {
@@ -45,11 +40,8 @@ final class ModMetadataParser {
         if (!ID.matcher(id).matches() || id.equals("foabic") || id.equals("minecraft")) {
             throw new ModLoadException(source + ": invalid or reserved mod id '" + id + "'");
         }
-
         String name = properties.getProperty("name", id).trim();
-        if (name.isEmpty()) {
-            name = id;
-        }
+        if (name.isEmpty()) name = id;
 
         Version version;
         try {
@@ -60,9 +52,7 @@ final class ModMetadataParser {
 
         List<String> entrypoints = splitList(properties.getProperty(
                 "entrypoints", properties.getProperty("entrypoint", "")));
-        if (entrypoints.isEmpty()) {
-            throw new ModLoadException(source + ": missing 'entrypoint'");
-        }
+        if (entrypoints.isEmpty()) throw new ModLoadException(source + ": missing 'entrypoint'");
 
         Environment environment;
         try {
@@ -73,33 +63,21 @@ final class ModMetadataParser {
 
         VersionRange apiRange;
         try {
-            apiRange = VersionRange.parse(properties.getProperty("api", "^0.1.0"));
+            apiRange = VersionRange.parse(properties.getProperty("api", "^0.2.0"));
         } catch (IllegalArgumentException e) {
             throw new ModLoadException(source + ": invalid API range", e);
         }
 
-        List<Dependency> dependencies = parseDependencies(
-                properties.getProperty("depends", ""), source, "depends");
-        List<Dependency> optional = parseDependencies(
-                properties.getProperty("optional", ""), source, "optional");
+        List<Dependency> dependencies = dependencies(properties.getProperty("depends", ""), source);
+        List<Dependency> optional = dependencies(properties.getProperty("optional", ""), source);
+        List<String> authors = splitList(properties.getProperty("authors", "").replace(';', ','));
 
-        List<String> authors = splitList(properties.getProperty("authors", "")
-                .replace(';', ','));
-
-        return new ModMetadata(
-                id,
-                name,
-                version,
-                properties.getProperty("description", "").trim(),
-                authors,
-                entrypoints,
-                dependencies,
-                optional,
-                environment,
-                apiRange);
+        return new ModMetadata(id, name, version,
+                properties.getProperty("description", "").trim(), authors, entrypoints,
+                dependencies, optional, environment, apiRange);
     }
 
-    private static List<Dependency> parseDependencies(String value, String source, String key) {
+    private static List<Dependency> dependencies(String value, String source) {
         List<Dependency> result = new ArrayList<>();
         for (String token : splitList(value)) {
             String id;
@@ -113,13 +91,12 @@ final class ModMetadataParser {
                 rangeText = token.substring(at + 1).trim();
             }
             if (!ID.matcher(id).matches()) {
-                throw new ModLoadException(source + ": invalid dependency id '" + id + "' in " + key);
+                throw new ModLoadException(source + ": invalid dependency id '" + id + "'");
             }
             try {
                 result.add(new Dependency(id, VersionRange.parse(rangeText)));
             } catch (IllegalArgumentException e) {
-                throw new ModLoadException(
-                        source + ": invalid version range for dependency '" + id + "'", e);
+                throw new ModLoadException(source + ": invalid range for dependency '" + id + "'", e);
             }
         }
         return result;
@@ -134,15 +111,11 @@ final class ModMetadataParser {
     }
 
     private static List<String> splitList(String value) {
-        if (value == null || value.isBlank()) {
-            return List.of();
-        }
+        if (value == null || value.isBlank()) return List.of();
         List<String> result = new ArrayList<>();
         for (String part : value.split(",")) {
             String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                result.add(trimmed);
-            }
+            if (!trimmed.isEmpty()) result.add(trimmed);
         }
         return result;
     }

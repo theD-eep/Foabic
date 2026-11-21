@@ -2,15 +2,7 @@ package dev.foabic.api.version;
 
 import java.util.Objects;
 
-/**
- * A small, lenient Semantic Versioning value.
- *
- * <p>The parser accepts {@code 1}, {@code 1.2} and {@code 1.2.3}, optional
- * prerelease identifiers after {@code -}, and ignores build metadata after
- * {@code +}. The canonical form is always {@code major.minor.patch[-prerelease]}.
- * Leniency is intentional: mod authors commonly write short versions such as
- * {@code 1.0}.
- */
+/** A small, lenient Semantic Version value. */
 public record Version(int major, int minor, int patch, String preRelease) implements Comparable<Version> {
 
     public Version {
@@ -31,12 +23,10 @@ public record Version(int major, int minor, int patch, String preRelease) implem
         if (value.isEmpty()) {
             throw new IllegalArgumentException("empty version");
         }
-
         int plus = value.indexOf('+');
         if (plus >= 0) {
             value = value.substring(0, plus);
         }
-
         String core = value;
         String pre = null;
         int dash = value.indexOf('-');
@@ -47,12 +37,10 @@ public record Version(int major, int minor, int patch, String preRelease) implem
                 throw new IllegalArgumentException("empty prerelease in version: " + text);
             }
         }
-
         String[] parts = core.split("\\.", -1);
         if (parts.length < 1 || parts.length > 3) {
             throw new IllegalArgumentException("invalid version: " + text);
         }
-
         int[] numbers = new int[3];
         for (int i = 0; i < parts.length; i++) {
             if (parts[i].isEmpty()) {
@@ -69,18 +57,14 @@ public record Version(int major, int minor, int patch, String preRelease) implem
                 throw new IllegalArgumentException("version component too large: " + text, e);
             }
         }
-
         return new Version(numbers[0], numbers[1], numbers[2], pre);
     }
 
     private static void validatePrerelease(String pre) {
         for (int i = 0; i < pre.length(); i++) {
             char c = pre.charAt(i);
-            boolean ok = (c >= 'a' && c <= 'z')
-                    || (c >= 'A' && c <= 'Z')
-                    || (c >= '0' && c <= '9')
-                    || c == '.'
-                    || c == '-';
+            boolean ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+                    || (c >= '0' && c <= '9') || c == '.' || c == '-';
             if (!ok) {
                 throw new IllegalArgumentException("invalid prerelease character: " + c);
             }
@@ -93,78 +77,53 @@ public record Version(int major, int minor, int patch, String preRelease) implem
     @Override
     public int compareTo(Version other) {
         int result = Integer.compare(major, other.major);
-        if (result != 0) {
-            return result;
-        }
+        if (result != 0) return result;
         result = Integer.compare(minor, other.minor);
-        if (result != 0) {
-            return result;
-        }
+        if (result != 0) return result;
         result = Integer.compare(patch, other.patch);
-        if (result != 0) {
-            return result;
-        }
+        if (result != 0) return result;
         return comparePrerelease(preRelease, other.preRelease);
     }
 
     private static int comparePrerelease(String left, String right) {
-        if (left == null && right == null) {
-            return 0;
-        }
-        if (left == null) {
-            return 1; // a release is newer than any prerelease
-        }
-        if (right == null) {
-            return -1;
-        }
-
+        if (left == null && right == null) return 0;
+        if (left == null) return 1;
+        if (right == null) return -1;
         String[] a = left.split("\\.", -1);
         String[] b = right.split("\\.", -1);
         int length = Math.min(a.length, b.length);
         for (int i = 0; i < length; i++) {
             int result = compareIdentifier(a[i], b[i]);
-            if (result != 0) {
-                return result;
-            }
+            if (result != 0) return result;
         }
         return Integer.compare(a.length, b.length);
     }
 
     private static int compareIdentifier(String left, String right) {
-        boolean leftNumeric = isNumeric(left);
-        boolean rightNumeric = isNumeric(right);
-        if (leftNumeric && rightNumeric) {
-            String a = stripLeadingZeros(left);
-            String b = stripLeadingZeros(right);
+        boolean ln = isNumeric(left);
+        boolean rn = isNumeric(right);
+        if (ln && rn) {
+            String a = stripZeros(left);
+            String b = stripZeros(right);
             int result = Integer.compare(a.length(), b.length());
             return result != 0 ? result : a.compareTo(b);
         }
-        if (leftNumeric) {
-            return -1;
-        }
-        if (rightNumeric) {
-            return 1;
-        }
+        if (ln) return -1;
+        if (rn) return 1;
         return left.compareTo(right);
     }
 
     private static boolean isNumeric(String value) {
-        if (value.isEmpty()) {
-            return false;
-        }
+        if (value.isEmpty()) return false;
         for (int i = 0; i < value.length(); i++) {
-            if (!Character.isDigit(value.charAt(i))) {
-                return false;
-            }
+            if (!Character.isDigit(value.charAt(i))) return false;
         }
         return true;
     }
 
-    private static String stripLeadingZeros(String value) {
+    private static String stripZeros(String value) {
         int i = 0;
-        while (i < value.length() - 1 && value.charAt(i) == '0') {
-            i++;
-        }
+        while (i < value.length() - 1 && value.charAt(i) == '0') i++;
         return value.substring(i);
     }
 

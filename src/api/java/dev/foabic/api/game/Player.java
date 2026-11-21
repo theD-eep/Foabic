@@ -3,9 +3,6 @@ package dev.foabic.api.game;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * A connected player.
- */
 public interface Player extends CommandSource {
 
     UUID id();

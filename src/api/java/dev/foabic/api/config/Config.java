@@ -7,16 +7,11 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Properties;
 
-/**
- * A deliberately boring, zero-dependency properties config.
- *
- * <p>Values are strings on disk. Typed getters fail loudly on malformed input
- * instead of silently returning a default. Saving is explicit; call
- * {@link #save()} after changing values.
- */
+/** A small properties-backed per-mod configuration. */
 public final class Config {
 
     private final Path path;
@@ -34,9 +29,7 @@ public final class Config {
 
     public synchronized void reload() {
         values.clear();
-        if (!Files.exists(path)) {
-            return;
-        }
+        if (!Files.exists(path)) return;
         try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
             values.load(reader);
         } catch (IOException e) {
@@ -51,9 +44,7 @@ public final class Config {
 
     public synchronized int getInt(String key, int fallback) {
         String value = values.getProperty(requireKey(key));
-        if (value == null) {
-            return fallback;
-        }
+        if (value == null) return fallback;
         try {
             return Integer.parseInt(value.trim());
         } catch (NumberFormatException e) {
@@ -63,9 +54,7 @@ public final class Config {
 
     public synchronized long getLong(String key, long fallback) {
         String value = values.getProperty(requireKey(key));
-        if (value == null) {
-            return fallback;
-        }
+        if (value == null) return fallback;
         try {
             return Long.parseLong(value.trim());
         } catch (NumberFormatException e) {
@@ -75,9 +64,7 @@ public final class Config {
 
     public synchronized double getDouble(String key, double fallback) {
         String value = values.getProperty(requireKey(key));
-        if (value == null) {
-            return fallback;
-        }
+        if (value == null) return fallback;
         try {
             return Double.parseDouble(value.trim());
         } catch (NumberFormatException e) {
@@ -87,10 +74,8 @@ public final class Config {
 
     public synchronized boolean getBoolean(String key, boolean fallback) {
         String value = values.getProperty(requireKey(key));
-        if (value == null) {
-            return fallback;
-        }
-        return switch (value.trim().toLowerCase(java.util.Locale.ROOT)) {
+        if (value == null) return fallback;
+        return switch (value.trim().toLowerCase(Locale.ROOT)) {
             case "true", "yes", "on" -> true;
             case "false", "no", "off" -> false;
             default -> throw new IllegalArgumentException(
@@ -128,9 +113,7 @@ public final class Config {
 
     private static String requireKey(String key) {
         Objects.requireNonNull(key, "key");
-        if (key.isBlank()) {
-            throw new IllegalArgumentException("config key must not be blank");
-        }
+        if (key.isBlank()) throw new IllegalArgumentException("config key must not be blank");
         return key;
     }
 }

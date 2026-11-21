@@ -1,17 +1,17 @@
 # Build outputs
 build/
-dist/
-out/
-*.class
 
-# Local server workspace / runtime state
+# Local runtime state
 run/
+client-run/
 .foabic/
+foabic-mods/
 server.jar
 eula.txt
 logs/
 world/
 world_*/
+screenshots/
 *.log
 
 # IDE

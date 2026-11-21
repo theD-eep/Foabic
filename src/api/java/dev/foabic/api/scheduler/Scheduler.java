@@ -7,14 +7,7 @@ import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-/**
- * Tick-based tasks. All actions run on the server thread when
- * {@link #tick(long)} is called by the platform adapter.
- *
- * <p>There is no wall-clock timer, no thread pool and no background thread.
- * A delay of zero means "next tick", not "immediately". Repeating tasks use a
- * fixed period and never try to catch up after a long tick.
- */
+/** Tick-based tasks, always run on the server thread. */
 public final class Scheduler {
 
     private static final System.Logger LOG = System.getLogger("Foabic");
@@ -26,11 +19,10 @@ public final class Scheduler {
 
     public Task schedule(long delayTicks, Runnable action) {
         Objects.requireNonNull(action, "action");
-        if (delayTicks < 0) {
-            throw new IllegalArgumentException("delayTicks must be >= 0");
-        }
+        if (delayTicks < 0) throw new IllegalArgumentException("delayTicks must be >= 0");
         synchronized (lock) {
-            ScheduledTask task = new ScheduledTask(ids.incrementAndGet(), tick + delayTicks, 0, action, null);
+            ScheduledTask task = new ScheduledTask(
+                    ids.incrementAndGet(), tick + delayTicks, 0, action, null);
             queue.add(task);
             return task;
         }
@@ -42,12 +34,8 @@ public final class Scheduler {
 
     public Task scheduleRepeating(long initialDelayTicks, long periodTicks, Consumer<Task> action) {
         Objects.requireNonNull(action, "action");
-        if (initialDelayTicks < 0) {
-            throw new IllegalArgumentException("initialDelayTicks must be >= 0");
-        }
-        if (periodTicks <= 0) {
-            throw new IllegalArgumentException("periodTicks must be > 0");
-        }
+        if (initialDelayTicks < 0) throw new IllegalArgumentException("initialDelayTicks must be >= 0");
+        if (periodTicks <= 0) throw new IllegalArgumentException("periodTicks must be > 0");
         synchronized (lock) {
             ScheduledTask task = new ScheduledTask(
                     ids.incrementAndGet(), tick + initialDelayTicks, periodTicks, null, action);
@@ -56,15 +44,8 @@ public final class Scheduler {
         }
     }
 
-    /**
-     * Advances the scheduler clock and runs every task whose due tick has
-     * arrived. Called by the platform adapter at the start of a server tick.
-     */
     public void tick(long currentTick) {
-        if (currentTick < 0) {
-            throw new IllegalArgumentException("currentTick must be >= 0");
-        }
-
+        if (currentTick < 0) throw new IllegalArgumentException("currentTick must be >= 0");
         List<ScheduledTask> due = new ArrayList<>();
         synchronized (lock) {
             tick = currentTick;
@@ -72,19 +53,15 @@ public final class Scheduler {
                 due.add(queue.poll());
             }
         }
-
         for (ScheduledTask task : due) {
-            if (task.cancelled()) {
-                continue;
-            }
+            if (task.cancelled()) continue;
             try {
                 task.run();
             } catch (Throwable failure) {
                 task.cancel();
                 LOG.log(System.Logger.Level.ERROR,
-                        "Scheduled task " + task.id() + " failed and was cancelled", failure);
+                        "scheduled task " + task.id() + " failed and was cancelled", failure);
             }
-
             if (!task.cancelled() && task.periodTicks > 0) {
                 synchronized (lock) {
                     task.dueTick = currentTick + task.periodTicks;
@@ -108,9 +85,7 @@ public final class Scheduler {
 
     public void cancelAll() {
         synchronized (lock) {
-            for (ScheduledTask task : queue) {
-                task.cancel();
-            }
+            for (ScheduledTask task : queue) task.cancel();
             queue.clear();
         }
     }
@@ -133,27 +108,13 @@ public final class Scheduler {
         }
 
         private void run() {
-            if (once != null) {
-                once.run();
-            } else {
-                repeating.accept(this);
-            }
+            if (once != null) once.run();
+            else repeating.accept(this);
         }
 
-        @Override
-        public long id() {
-            return id;
-        }
-
-        @Override
-        public boolean cancelled() {
-            return cancelled;
-        }
-
-        @Override
-        public void cancel() {
-            cancelled = true;
-        }
+        @Override public long id() { return id; }
+        @Override public boolean cancelled() { return cancelled; }
+        @Override public void cancel() { cancelled = true; }
 
         @Override
         public int compareTo(ScheduledTask other) {

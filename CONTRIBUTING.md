@@ -1,84 +1,95 @@
-# 贡献指南
+# Contributing
 
-感谢你考虑为 Foabic 做贡献。这是一个刻意保持极小的项目：**先读设计约束，再写代码**。
+Thanks for helping. Foabic is deliberately small: read the scope rules before writing code.
 
-## 环境要求
+## Requirements
 
-| 依赖 | 版本 | 用途 |
+| Dependency | Version | Notes |
 | --- | --- | --- |
-| JDK | **25**（必须，`--release 25`） | 编译、测试、运行 |
-| Minecraft 26.1 官方 `server.jar` | 可选 | 只有构建 26.x adapter、跑真实服务器时才需要 |
-| Git | 任意较新版本 | 提交 |
-| Bash（Windows 上可用 Git Bash） | 可选 | 运行 `build.sh`；Windows 也可只用 `build.ps1` |
+| JDK | **25** | everything is compiled with `--release 25` |
+| Minecraft server bundle | **26.1** | official `server.jar`, already unobfuscated |
+| Fabric Loader | **0.20.1** | compile and runtime dependency |
+| Fabric API | **0.145.1+26.1** | the build extracts its nested modules |
 
-Foabic 不要求 Gradle/Maven，也不要在仓库里引入包管理器。构建就是 `javac` + `jar`。
+No Gradle, Maven, Loom, mappings or remap step. The build is `javac` + `jar` driven by `build.ps1`.
 
-## 构建与测试
+## Build and test
 
-```bash
-# Linux / macOS（core-only，不构建 adapter）
-JAVA_HOME=/path/to/jdk-25 ./build.sh
-
-# 带 adapter（需要官方 server.jar）
-JAVA_HOME=/path/to/jdk-25 FOABIC_MC_JAR=/path/to/server.jar ./build.sh
-
-# 跳过测试
-SKIP_TESTS=1 ./build.sh
-```
+The build script is PowerShell and currently Windows-oriented:
 
 ```bat
-:: Windows
-build.cmd -JavaHome "C:\path\to\jdk-25"
-build.cmd -JavaHome "C:\path\to\jdk-25" -McJar "C:\path\to\server.jar"
-build.cmd -JavaHome "C:\path\to\jdk-25" -SkipTests
+build.cmd ^
+  -JavaHome "C:\path\to\jdk-25" ^
+  -McJar "C:\path\to\server.jar" ^
+  -FabricLoaderJar "C:\path\to\fabric-loader-0.20.1.jar" ^
+  -FabricApiJar "C:\path\to\fabric-api-0.145.1+26.1.jar"
 ```
 
-产物在 `dist/`：
+The script extracts the Minecraft bundle and Fabric API modules, compiles the API, loader and Fabric adapter, packages the jars, then runs the core test suite. Expected tail:
 
 ```text
-foabic-api-0.1.0.jar            API，模组编译期依赖
-foabic-api-0.1.0-sources.jar    API 源码
-foabic-0.1.0.jar                agent：API + loader + adapter
-foabic-0.1.0-sources.jar        agent 源码（api + loader + mc26）
+PASS versions
+PASS events
+PASS scheduler
+PASS commands
+ALL TESTS PASSED
 ```
 
-测试套件是纯 Java 的 `main` 程序（`src/test/java/dev/foabic/test/AllTests.java`），没有 JUnit。新增功能时请同时补测试，并确保 `ALL TESTS PASSED`。
+`-SkipTests` skips the suite. Artifacts land in `dist/`:
 
-## 代码约定
+```text
+foabic-api-0.2.0.jar                  compile-time API
+foabic-fabric-0.2.0.jar               Fabric mod (API + loader + adapter)
+foabic-example-smoketest-0.2.0.jar    runnable block/signal example
+```
 
-- **零第三方运行时依赖**：不引入 ASM、Mixin、Gson、Jackson、Guava、日志框架。需要解析就写最小解析器，或者重新考虑设计。
-- **不扫描 classpath、不做注解反射**：加载只读 `mods/*.jar` 根部的 `foabic.mod`。
-- **不创建线程池**：所有回调在服务器线程执行；需要延迟用 `Scheduler`。
-- **公开 API 保持小**：新增公开类型前先问“模组真的需要它吗”。内部包（`dev.foabic.api.internal`、`dev.foabic.loader.*`、`dev.foabic.mc26.*`）不属于模组契约。
-- 4 空格缩进、UTF-8、无 BOM；事件类型用不可变 `record`。
-- 新增/修改公开 API 时，同步更新 `docs/API.md` 和 `CHANGELOG.md`。
-- 修改字节码注入（`BytecodeInjector`、`Mc26Transformer`）必须补真实类加载测试。
+The build never downloads anything; point it at jars you obtained yourself. The CI workflow downloads the exact versions above from Mojang/Fabric Maven on a Windows runner.
 
-## 版本号
+## Scope rules
 
-版本号出现在四处，发布前必须一致：
+Beta 0.2 accepts:
 
-1. `src/api/java/dev/foabic/api/Foabic.java` 的 `VERSION`
-2. `build.ps1` 的 `$Version`
-3. `build.sh` 的 `VERSION`
-4. 根目录 `CHANGELOG.md` 的小节标题
+- fixes to the Fabric adapter, registry bridge, `submit`, `connect` and `UseBlockSignal`;
+- loader, dependency resolution, event, command and scheduler fixes;
+- documentation, tests and examples.
 
-标签使用 `v` 前缀，例如 `v0.1.0`；Release 工作流会校验标签与 `build.sh` 中的版本一致。
+Do **not** add, on this branch: NeoForge, a signal standard library, a Gradle/Maven build plugin, Mixin, cross-platform packaging, networking, GUI APIs or model/creative-tab generation. They are deferred to 0.3 — see [docs/ROADMAP.md](docs/ROADMAP.md).
 
-## 提交与 PR
+Architecture rule: `src/api` must not import Minecraft or Fabric classes. Platform code belongs in `src/fabric`.
 
-1. Fork，从 `main` 开分支：`feat/xxx`、`fix/xxx`、`docs/xxx`。
-2. 本地跑完整构建和测试。
-3. **不要提交** `dist/`、`build/`、`server.jar`、`run/`、`.foabic/` 或任何游戏文件；这些已在 `.gitignore` 中。
-4. PR 描述写清楚：改了什么、为什么、怎么验证的；涉及 API 变更时附迁移说明。
-5. 一个 PR 只做一件事；格式化/重命名请单独开 PR。
+## Style
 
-## 报告问题
+- 4 spaces, UTF-8, no BOM; event types are immutable `record`s.
+- No third-party runtime dependency beyond the JDK and the Fabric API the user installs.
+- No classpath scanning or annotation reflection; the loader only reads `foabic.mod`.
+- Keep the public API small. If a new public type is not needed by the example or a test, do not add it.
+- Public API changes must update [docs/API.md](docs/API.md) and [CHANGELOG.md](CHANGELOG.md).
 
-- 功能缺陷用 Bug Report 模板，附上启动日志（`Foabic ... ready`、`loaded N mod(s)`、adapter 日志）和环境信息。
-- 安全问题**不要**开公开 issue，见 [SECURITY.md](SECURITY.md)。
-- 使用问题请先看 [README](README.md)、[MOD_FORMAT](docs/MOD_FORMAT.md) 和 [API](docs/API.md)。
+## Version numbers
 
-## 许可证
+The version appears in four places and must match:
 
-提交即表示你同意以 [MIT](LICENSE) 许可贡献你的代码。
+1. `build.ps1` → `$Version`
+2. `src/api/java/dev/foabic/api/Foabic.java` → `VERSION`
+3. `src/fabric/resources/fabric.mod.json` → `"version"`
+4. `CHANGELOG.md` → the section heading
+
+Tags use a `v` prefix, for example `v0.2.0`; the release workflow rejects a tag that disagrees with `build.ps1`.
+
+## Commits and pull requests
+
+1. Fork the repository and branch from `main`: `fix/...`, `feat/...`, `docs/...`.
+2. Run the full build and test suite.
+3. Do not commit `build/`, `run/`, `client-run/`, `world/`, `logs/`, `server.jar` or any game file; they are ignored.
+4. `dist/` jars are release artifacts kept in the repository for the beta. Maintainers regenerate them when cutting a release; a normal pull request should not include binary changes.
+5. One concern per pull request; keep formatting or renaming in a separate change.
+
+## Reporting
+
+- Use the Bug Report template with the full startup log and the exact Fabric Loader / Fabric API versions.
+- Security issues: do not open a public issue, follow [SECURITY.md](SECURITY.md).
+- Usage questions: read the [README](README.md), [docs/API.md](docs/API.md) and [docs/FABRIC.md](docs/FABRIC.md) first.
+
+## License
+
+By contributing you agree to license your work under [MIT](LICENSE).

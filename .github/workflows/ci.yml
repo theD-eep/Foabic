@@ -8,14 +8,14 @@ on:
 permissions:
   contents: read
 
+env:
+  MC_SERVER_URL: https://piston-data.mojang.com/v1/objects/3872a7f07a1a595e651aef8b058dfc2bb3772f46/server.jar
+  FABRIC_LOADER_URL: https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.20.1/fabric-loader-0.20.1.jar
+  FABRIC_API_URL: https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.145.1+26.1/fabric-api-0.145.1+26.1.jar
+
 jobs:
   build:
-    name: build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -25,18 +25,20 @@ jobs:
           distribution: temurin
           java-version: '25'
 
-      - name: Build and test (Linux)
-        if: runner.os != 'Windows'
-        run: ./build.sh
-
-      - name: Build and test (Windows)
-        if: runner.os == 'Windows'
+      - name: Download build dependencies
         shell: pwsh
-        run: ./build.ps1
+        run: |
+          curl.exe -L --fail --retry 3 -o server.jar "$env:MC_SERVER_URL"
+          curl.exe -L --fail --retry 3 -o fabric-loader.jar "$env:FABRIC_LOADER_URL"
+          curl.exe -L --fail --retry 3 -o fabric-api.jar "$env:FABRIC_API_URL"
+
+      - name: Build and test
+        shell: pwsh
+        run: ./build.ps1 -McJar server.jar -FabricLoaderJar fabric-loader.jar -FabricApiJar fabric-api.jar
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: foabic-${{ matrix.os }}
+          name: foabic-0.2.0
           path: dist/*.jar
           if-no-files-found: error

@@ -14,23 +14,18 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
-/**
- * In-memory command tree. The platform adapter translates this tree to
- * Brigadier once, on server start.
- */
 public final class CommandRegistryImpl implements CommandRegistry {
 
-    private static final Pattern ROOT_NAME = Pattern.compile("[a-z0-9_-]{1,32}");
-    private static final Pattern NODE_NAME = Pattern.compile("[a-zA-Z0-9_-]{1,32}");
+    private static final Pattern ROOT = Pattern.compile("[a-z0-9_-]{1,32}");
+    private static final Pattern NODE = Pattern.compile("[a-zA-Z0-9_-]{1,32}");
 
     private final Map<String, MutableCommandNode> roots = new LinkedHashMap<>();
 
     @Override
     public CommandBuilder literal(String name) {
         Objects.requireNonNull(name, "name");
-        if (!ROOT_NAME.matcher(name).matches()) {
-            throw new IllegalArgumentException(
-                    "invalid command name '" + name + "': expected [a-z0-9_-]{1,32}");
+        if (!ROOT.matcher(name).matches()) {
+            throw new IllegalArgumentException("invalid command name: " + name);
         }
         if (roots.containsKey(name)) {
             throw new IllegalArgumentException("command '/" + name + "' is already registered");
@@ -43,10 +38,6 @@ public final class CommandRegistryImpl implements CommandRegistry {
     @Override
     public List<CommandBuilder> roots() {
         return List.copyOf(roots.values());
-    }
-
-    public int size() {
-        return roots.size();
     }
 
     public static final class MutableCommandNode implements CommandBuilder {
@@ -62,19 +53,12 @@ public final class CommandRegistryImpl implements CommandRegistry {
             this.argumentType = argumentType;
         }
 
-        @Override
-        public String name() {
-            return name;
-        }
-
-        @Override
-        public ArgumentType argumentType() {
-            return argumentType;
-        }
+        @Override public String name() { return name; }
+        @Override public ArgumentType argumentType() { return argumentType; }
 
         @Override
         public CommandBuilder executes(CommandHandler handler) {
-            this.executor = Objects.requireNonNull(handler, "handler");
+            executor = Objects.requireNonNull(handler, "handler");
             return this;
         }
 
@@ -86,22 +70,19 @@ public final class CommandRegistryImpl implements CommandRegistry {
 
         @Override
         public CommandBuilder suggests(SuggestionProvider provider) {
-            this.suggestionProvider = Objects.requireNonNull(provider, "provider");
+            suggestionProvider = Objects.requireNonNull(provider, "provider");
             return this;
         }
 
         @Override
         public CommandBuilder then(CommandBuilder child) {
             Objects.requireNonNull(child, "child");
-            if (child == this) {
-                throw new IllegalArgumentException("a command node cannot be its own child");
-            }
-            if (!NODE_NAME.matcher(child.name()).matches()) {
+            if (child == this) throw new IllegalArgumentException("node cannot be its own child");
+            if (!NODE.matcher(child.name()).matches()) {
                 throw new IllegalArgumentException("invalid command node name: " + child.name());
             }
             if (children.containsKey(child.name())) {
-                throw new IllegalArgumentException(
-                        "duplicate child '" + child.name() + "' under '/" + name + "'");
+                throw new IllegalArgumentException("duplicate child '" + child.name() + "' under '/" + name + "'");
             }
             if (!(child instanceof MutableCommandNode mutable)) {
                 throw new IllegalArgumentException("command nodes must come from this registry");
@@ -112,50 +93,30 @@ public final class CommandRegistryImpl implements CommandRegistry {
 
         @Override
         public CommandBuilder literal(String childName) {
-            Objects.requireNonNull(childName, "childName");
-            if (!NODE_NAME.matcher(childName).matches()) {
-                throw new IllegalArgumentException("invalid literal name: " + childName);
-            }
-            MutableCommandNode child = new MutableCommandNode(childName, null);
+            MutableCommandNode child = new MutableCommandNode(requireNodeName(childName), null);
             then(child);
             return child;
         }
 
         @Override
         public CommandBuilder argument(String argumentName, ArgumentType type) {
-            Objects.requireNonNull(argumentName, "argumentName");
             Objects.requireNonNull(type, "type");
-            if (!NODE_NAME.matcher(argumentName).matches()) {
-                throw new IllegalArgumentException("invalid argument name: " + argumentName);
-            }
-            MutableCommandNode child = new MutableCommandNode(argumentName, type);
+            MutableCommandNode child = new MutableCommandNode(requireNodeName(argumentName), type);
             then(child);
             return child;
         }
 
-        @Override
-        public List<CommandBuilder> children() {
-            return List.copyOf(children.values());
+        private static String requireNodeName(String value) {
+            Objects.requireNonNull(value, "name");
+            if (!NODE.matcher(value).matches()) {
+                throw new IllegalArgumentException("invalid command node name: " + value);
+            }
+            return value;
         }
 
-        @Override
-        public CommandHandler executor() {
-            return executor;
-        }
-
-        @Override
-        public Predicate<CommandSource> requirement() {
-            return requirement;
-        }
-
-        @Override
-        public SuggestionProvider suggestionProvider() {
-            return suggestionProvider;
-        }
-
-        @Override
-        public String toString() {
-            return (argumentType == null ? "literal " : "argument ") + name;
-        }
+        @Override public List<CommandBuilder> children() { return List.copyOf(children.values()); }
+        @Override public CommandHandler executor() { return executor; }
+        @Override public Predicate<CommandSource> requirement() { return requirement; }
+        @Override public SuggestionProvider suggestionProvider() { return suggestionProvider; }
     }
 }

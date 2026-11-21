@@ -1,102 +1,92 @@
-# 真实环境验证记录
+# Beta 0.2 verification
 
-## 环境
+## Environment
 
-| 项 | 值 |
+| Item | Value |
 | --- | --- |
-| 日期 | 2026-11-20 |
-| 操作系统 | Windows 11 |
-| Java | OpenJDK 25.0.1（Microsoft build 25.0.1+8-LTS） |
-| Minecraft | Java Edition 26.1 官方专用服务器 |
-| Foabic | 0.1.0-preview |
-| 启动方式 | 官方 server bundle 展开后的 flat classpath：`-javaagent:foabic-0.1.0.jar -cp <server-26.1.jar;libraries/*> net.minecraft.server.Main nogui` |
+| Date | 2026-11-21 |
+| OS | Windows 11 |
+| Java | OpenJDK 25.0.1 (Microsoft build) |
+| Minecraft | Java Edition 26.1 |
+| Fabric Loader | 0.20.1 |
+| Fabric API | 0.145.1+26.1 |
+| Foabic | 0.2.0 |
 
-## 冒烟模组
+## End-to-end client/server test
 
-测试模组只做四件事：
+1. Started a Fabric 26.1 dedicated server with Fabric API, Foabic and the example mod.
+2. Started a Fabric 26.1 client with the same three mods.
+3. The client auto-connected to the local server.
+4. The example registered `smoketest:test_block` on both sides through `submit`.
+5. On player join, the example placed the block at `playerPos + (2, 1, 0)`.
+6. The client received the block state and its assets.
+7. The client used the block (`MultiPlayerGameMode.useItemOn`).
+8. The server adapter posted `UseBlockSignal`; the example set `SUCCESS` and sent an action bar.
+9. The client captured a screenshot.
 
-1. 在初始化器中打印 mod id；
-2. 监听 starting / started / tick / level tick / stopping / stopped；
-3. 注册 `/foabictest` 命令；
-4. 通过命令向控制台输出确认信息。
-
-没有安装其他模组，没有 Fabric/NeoForge，没有 Mixin。
-
-## 结果
-
-服务器正常启动到：
-
-```text
-Done (0.498s)! For help, type "help"
-```
-
-Foabic 日志：
+Evidence:
 
 ```text
-Foabic 0.1.0 starting on SERVER (Minecraft 26.n+)
-initializing smoketest 1.0.0
-FOABIC_SMOKE init smoketest api=0.1.0
-Foabic loaded 1 mod(s) in 128 ms
-Minecraft 26.x adapter installed
-Foabic 0.1.0 ready: 1 mod(s), agent jar 94 KiB
-installed Foabic hooks in net/minecraft/server/level/ServerLevel
-installed Foabic hooks in net/minecraft/server/MinecraftServer
-installed Foabic hooks in net/minecraft/server/players/PlayerList
-registered 1 command(s)
+# client
+FOABIC_SMOKE init smoketest api=0.2.0
+FOABIC_REGISTRY block=true item=true blocks=1169 items=1507
+FOABIC_ASSET=true
+FOABIC_CLIENT_JOIN
+FOABIC_CLIENT_USE=Pass[]
+FOABIC_CLIENT_BLOCK=Block{smoketest:test_block}
+FOABIC_CLIENT_SCREENSHOT=已将截图保存为2026-11-21_13.19.23.png
+
+# server
+FOABIC_PLACED BlockPos{x=9, y=-59, z=-5}
+Tester joined the game
+FOABIC_USE_SIGNAL block=smoketest:test_block pos=9,-59,-5 hand=MAIN_HAND
 ```
 
-事件与命令：
+Screenshot: [foabic-client.png](images/foabic-client.png)
+
+It shows the checkerboard test block, the player's hand, and the action bar:
 
 ```text
-FOABIC_SMOKE starting name=world
-FOABIC_SMOKE started version=26.1
-FOABIC_SMOKE tick=1
-FOABIC_SMOKE level=minecraft:overworld time=1
-FOABIC_SMOKE level=minecraft:the_end time=1
-FOABIC_SMOKE level=minecraft:the_nether time=0
-FOABIC_SMOKE tick=2
-FOABIC_SMOKE tick=3
-FOABIC_COMMAND_OK from=Server
-FOABIC_ARG_OK=hello
-FOABIC_SMOKE stopping
-FOABIC_SMOKE stopped
-SMOKE_EXIT=0
+Foabic: Test Block used
 ```
 
-`/foabictest` 和 `/foabictest hello` 是通过服务器控制台 stdin 输入的；输出证明 Brigadier 命令注册、权限源包装、literal/argument 解析、`getString` 和 `sendMessage` 全链路可用。
+This verifies visible client rendering, client/server registry parity, real block interaction, signal dispatch, result mutation, and visible feedback.
 
-## 自动化测试
+## Server-only simulation
+
+The example also exposes:
+
+```mcfunction
+/foabictest use
+```
+
+It uses Fabric's `FakePlayer` to invoke `UseBlockCallback` on the server and prints:
+
+```text
+FOABIC_USE_SIGNAL block=smoketest:test_block pos=0,64,0 hand=MAIN_HAND
+FOABIC_USE_RESULT=Success[...]
+```
+
+## Core tests
 
 ```text
 PASS versions
 PASS events
 PASS scheduler
 PASS commands
-PASS bytecode
-PASS loader
 ALL TESTS PASSED
 ```
 
-覆盖内容：
-
-- SemVer 解析/比较、版本范围、非法输入；
-- 事件优先级、取消、异常隔离、取消订阅；
-- tick 调度器、延迟、重复、取消、异常任务；
-- 命令树、参数、重复根、非法名称；
-- 真实加载并执行 `BytecodeInjector` 转换后的类（entry/return/多 return 路径）；
-- 模组发现、依赖顺序、缺失依赖、重复 id、环境过滤、可选依赖、API 版本拒绝、配置、资源、事件订阅。
-
-## 体积
+## Artifacts
 
 ```text
-foabic-api-0.1.0.jar     42.1 KiB
-foabic-0.1.0.jar         95.3 KiB
+foabic-api-0.2.0.jar                 46.6 KiB
+foabic-fabric-0.2.0.jar              92.9 KiB
+foabic-example-smoketest-0.2.0.jar    7.5 KiB
 ```
 
-## 未验证/已知限制
+## Notes
 
-- **客户端**没有适配器，客户端启动/UI/按键未测试。
-- **玩家加入/离开**：hook 已按 26.1 的 `PlayerList.placeNewPlayer` / `remove` 描述符编译，但没有真实客户端连接测试；玩家行为在 0.2 前视为 preview。
-- **26.2+**：未测试；方法名/描述符可能变化。
-- **官方 server.jar bundler 直接启动**：会产生 `NoClassDefFoundError: dev/foabic/mc26/Mc26Hooks`，因为 bundler 的子加载器 parent 是 platform loader。请使用 `tools/run-server.ps1` / `.sh` 的 flat classpath 启动。
-- **内容模组**：没有方块/物品注册，别用 0.1 做这类模组。
+- `Failed to fetch user properties` and Realms errors in the client log are expected from the offline test account; they do not affect joining or gameplay.
+- The client test harness auto-connects to `127.0.0.1:25598`; it lives under `examples/client-test` and is not needed by users.
+- No NeoForge, Mixin, signal library or build plugin was involved.

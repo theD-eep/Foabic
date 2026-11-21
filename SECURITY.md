@@ -1,37 +1,39 @@
-# 安全策略
+# Security policy
 
-## 支持范围
+## Supported versions
 
-Foabic 目前是 `0.x` 预览版，只为最新发布版本提供安全修复。
+Foabic is a `0.x` beta; only the latest release receives security fixes.
 
-| 版本 | 支持 |
+| Version | Supported |
 | --- | --- |
-| 0.1.x | ✅ |
-| < 0.1 | ❌ |
+| 0.2.x | ✅ |
+| < 0.2 | ❌ |
 
-## 报告漏洞
+## Reporting a vulnerability
 
-**不要**通过公开 issue、讨论区或 PR 报告安全问题。
+Do **not** open a public issue, discussion or pull request for a security problem.
 
-请使用 GitHub 仓库的 **Private vulnerability reporting**（仓库页面 → Security → Report a vulnerability）。如果该入口不可用，请通过维护者的 GitHub 主页所列联系方式私下联系。
+Use the repository's **Private vulnerability reporting** (Security → Report a vulnerability). If that entry point is unavailable, contact the maintainers privately through the GitHub profile listed on the repository.
 
-报告请包含：
+Please include:
 
-- 受影响的版本与组件（loader / adapter / API）；
-- 复现步骤或最小复现工程；
-- 影响评估（崩溃、权限提升、任意文件读取、代码执行等）；
-- 是否已在真实服务器上验证。
+- the affected version and component (API, loader, Fabric adapter);
+- reproduction steps or a minimal project;
+- impact (crash, permission bypass, arbitrary file read, code execution, ...);
+- whether it was reproduced on a real Fabric server.
 
-我们会在 7 天内确认收到，并在修复发布后致谢（除非你希望匿名）。在修复发布前，请勿公开细节。
+We aim to acknowledge within 7 days and to credit reporters after a fix ships, unless you prefer to stay anonymous. Please do not disclose details before a release.
 
-## 安全模型（请先阅读）
+## Security model
 
-- Foabic **不做沙箱**。模组是受信任的 JVM 代码，`-javaagent` 运行在服务器进程内，拥有与服务器相同的权限。只安装你信任的模组。
-- 加载器按 `mods/*.jar` 根部的 `foabic.mod` 发现模组；`ModResources` 被限制在模组自身 jar 内并拒绝 `..` 路径。
-- 命令权限使用 0–4 等级，适配器在边界映射到 26.x 的 `PermissionSet`。
+- Foabic **does not sandbox** mods. A Foabic mod runs as ordinary trusted JVM code inside Fabric Loader, with the same permissions as the server. Only install mods you trust.
+- Foabic 0.2 does not bundle Minecraft, Fabric Loader or Fabric API. Those are supplied by the user and their security is their own project's responsibility.
+- The loader discovers mods by reading `foabic.mod` from `mods/` and `foabic-mods/`.
+- `ModResources` is scoped to the owning mod jar and rejects `..` paths.
+- Commands use 0–4 permission levels mapped onto the Fabric environment.
 
-值得关注的问题类型：清单解析绕过、路径穿越、依赖解析缺陷导致加载不可信 jar、权限映射错误、字节码注入破坏服务器完整性。
+Areas worth testing: manifest parsing, path traversal in resources, dependency resolution that could load an unexpected jar, registry-bridge ordering, permission mapping, and anything that could execute code from a mod jar before the user expects it.
 
-## 依赖
+## Dependencies
 
-Foabic 没有运行时第三方依赖，因此不存在传递依赖的漏洞面。构建和测试只需要 JDK 25。
+There is no bundled third-party runtime dependency beyond the JDK. Fabric API is provided by the user and is not redistributed here. Build-time downloads in CI are pinned to explicit versions and URLs.

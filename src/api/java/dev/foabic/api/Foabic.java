@@ -12,19 +12,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/**
- * The public entry point to Foabic.
- *
- * <p>All methods except {@link #isReady()} and {@link #VERSION} require a
- * loaded runtime. During a mod's initializer the runtime is guaranteed to be
- * installed.
- */
+/** Public entry point to Foabic. */
 public final class Foabic {
 
-    /** Foabic API version, not the Minecraft version. */
-    public static final String VERSION = "0.1.0";
-
-    /** The Minecraft line this release targets. */
+    public static final String VERSION = "0.2.0";
     public static final String MINECRAFT = "26.n+";
 
     private Foabic() {

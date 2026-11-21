@@ -1,44 +1,47 @@
-name: 功能请求
-description: 提出新能力或改进建议
+name: Feature request
+description: Propose a capability or improvement
 title: "[Feature] "
 labels: [enhancement]
 body:
   - type: markdown
     attributes:
       value: |
-        Foabic 的目标是**小**。提出功能前请先读 [路线图](../blob/main/docs/ROADMAP.md) 和 README 的“兼容性与边界”。
-        0.1 明确不提供：方块/物品/实体注册、网络包、资源包注入、Mixin、热重载、客户端。
+        Beta 0.2 is intentionally narrow. Read [docs/ROADMAP.md](../blob/main/docs/ROADMAP.md) first.
+
+        Deferred to 0.3 and **not** accepted on this branch: NeoForge, a signal standard library,
+        a Gradle/Maven build plugin, Mixin, cross-platform packaging, networking, GUI APIs,
+        model or creative-tab generation.
 
   - type: textarea
     id: problem
     attributes:
-      label: 要解决的问题
-      description: 你现在的模组因为缺少什么能力而写不下去？
+      label: Problem
+      description: What can you not build today because of the missing capability?
     validations:
       required: true
 
   - type: textarea
     id: proposal
     attributes:
-      label: 建议方案
-      description: API 形状、事件、清单字段，或你希望的行为。
+      label: Proposed change
+      description: API shape, event, manifest field, or expected behaviour.
     validations:
       required: true
 
   - type: textarea
     id: alternatives
     attributes:
-      label: 替代方案
-      description: 现在是怎么绕过的？为什么不够好？
+      label: Alternatives
+      description: How do you work around it now, and why is that not enough?
 
   - type: checkboxes
     id: constraints
     attributes:
-      label: 设计约束确认
+      label: Design constraints
       options:
-        - label: 该功能不要求引入第三方运行时依赖（ASM/Mixin/Gson 等）。
+        - label: This does not require a third-party runtime dependency beyond the JDK and Fabric API.
           required: true
-        - label: 该功能不要求扫描 classpath 或做注解反射。
+        - label: This does not require classpath scanning or annotation reflection.
           required: true
-        - label: 我理解 0.x 不保证二进制兼容。
+        - label: I understand that 0.x does not guarantee binary compatibility.
           required: true
