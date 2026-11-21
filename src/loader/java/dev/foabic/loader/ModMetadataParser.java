@@ -63,7 +63,7 @@ final class ModMetadataParser {
 
         VersionRange apiRange;
         try {
-            apiRange = VersionRange.parse(properties.getProperty("api", "^0.2.0"));
+            apiRange = VersionRange.parse(properties.getProperty("api", "^1.0.0"));
         } catch (IllegalArgumentException e) {
             throw new ModLoadException(source + ": invalid API range", e);
         }

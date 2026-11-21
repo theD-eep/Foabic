@@ -1,4 +1,10 @@
-# Beta 0.2 verification
+# Foabic 1.0 verification
+
+## Contract
+
+On Minecraft 26.3, one minimal Foabic mod starts on Fabric and on NeoForge, registers one block and its block item, receives one signal, and produces identical Foabic observations when the run is repeated.
+
+This is the release gate for 1.0. It is not a client-rendering test and not a full platform compatibility matrix.
 
 ## Environment
 
@@ -6,87 +12,87 @@
 | --- | --- |
 | Date | 2026-11-21 |
 | OS | Windows 11 |
-| Java | OpenJDK 25.0.1 (Microsoft build) |
-| Minecraft | Java Edition 26.1 |
+| Java | Eclipse Temurin 25.0.5.1+2 |
+| Gradle | 9.5.1 (wrapper) |
+| Minecraft | Java Edition 26.3 |
 | Fabric Loader | 0.20.1 |
-| Fabric API | 0.145.1+26.1 |
-| Foabic | 0.2.0 |
+| Fabric API | 0.166.2+26.3 |
+| NeoForge | 26.3.0.115 |
+| Foabic | 1.0.0 |
 
-## End-to-end client/server test
+## Build
 
-1. Started a Fabric 26.1 dedicated server with Fabric API, Foabic and the example mod.
-2. Started a Fabric 26.1 client with the same three mods.
-3. The client auto-connected to the local server.
-4. The example registered `smoketest:test_block` on both sides through `submit`.
-5. On player join, the example placed the block at `playerPos + (2, 1, 0)`.
-6. The client received the block state and its assets.
-7. The client used the block (`MultiPlayerGameMode.useItemOn`).
-8. The server adapter posted `UseBlockSignal`; the example set `SUCCESS` and sent an action bar.
-9. The client captured a screenshot.
-
-Evidence:
-
-```text
-# client
-FOABIC_SMOKE init smoketest api=0.2.0
-FOABIC_REGISTRY block=true item=true blocks=1169 items=1507
-FOABIC_ASSET=true
-FOABIC_CLIENT_JOIN
-FOABIC_CLIENT_USE=Pass[]
-FOABIC_CLIENT_BLOCK=Block{smoketest:test_block}
-FOABIC_CLIENT_SCREENSHOT=已将截图保存为2026-11-21_13.19.23.png
-
-# server
-FOABIC_PLACED BlockPos{x=9, y=-59, z=-5}
-Tester joined the game
-FOABIC_USE_SIGNAL block=smoketest:test_block pos=9,-59,-5 hand=MAIN_HAND
+```bat
+gradlew.bat build
 ```
 
-Screenshot: [foabic-client.png](images/foabic-client.png)
-
-It shows the checkerboard test block, the player's hand, and the action bar:
+Core tests are part of `build` via the `:coreTest` task:
 
 ```text
-Foabic: Test Block used
-```
-
-This verifies visible client rendering, client/server registry parity, real block interaction, signal dispatch, result mutation, and visible feedback.
-
-## Server-only simulation
-
-The example also exposes:
-
-```mcfunction
-/foabictest use
-```
-
-It uses Fabric's `FakePlayer` to invoke `UseBlockCallback` on the server and prints:
-
-```text
-FOABIC_USE_SIGNAL block=smoketest:test_block pos=0,64,0 hand=MAIN_HAND
-FOABIC_USE_RESULT=Success[...]
-```
-
-## Core tests
-
-```text
-PASS versions
 PASS events
-PASS scheduler
-PASS commands
-ALL TESTS PASSED
+PASS failure isolation
+PASS versions
+PASS use-block signal
+ALL TESTS PASSED (4)
 ```
 
-## Artifacts
+Gradle artifacts:
+
+| File | Bytes |
+| --- | ---: |
+| `foabic-api-1.0.0.jar` | 34,396 |
+| `foabic-fabric-1.0.0.jar` | 69,385 |
+| `foabic-neoforge-1.0.0.jar` | 70,592 |
+| `foabic-example-minimal-1.0.0.jar` | 4,029 |
+
+Checksums: `dist/SHA256SUMS`.
+
+## Runtime procedure
+
+The Gradle-built jars were installed into the prepared dedicated-server runtimes:
+
+1. Fabric: Fabric API + `foabic-fabric-1.0.0.jar` in `mods/`, example in `foabic-mods/`.
+2. NeoForge: `foabic-neoforge-1.0.0.jar` in `mods/`, example in `foabic-mods/`.
+3. Start the dedicated server, wait for `Done (` and `FOABIC_SIGNAL`.
+4. Stop the server.
+5. Repeat from a fresh process.
+
+The first run and the second run on each platform produced the three lines below. The Gradle-built jars are the ones measured above; no pre-Gradle jar was used.
+
+## Evidence
+
+Fabric: [verification/fabric.txt](verification/fabric.txt)
 
 ```text
-foabic-api-0.2.0.jar                 46.6 KiB
-foabic-fabric-0.2.0.jar              92.9 KiB
-foabic-example-smoketest-0.2.0.jar    7.5 KiB
+FOABIC_REGISTER platform=fabric block=foabic_test:test_block item=foabic_test:test_block
+FOABIC_SIGNAL name=server_started platform=fabric mc=26.3 mods=1
+FOABIC_STATUS platform=fabric block_registered=true item_registered=true
 ```
 
-## Notes
+NeoForge: [verification/neoforge.txt](verification/neoforge.txt)
 
-- `Failed to fetch user properties` and Realms errors in the client log are expected from the offline test account; they do not affect joining or gameplay.
-- The client test harness auto-connects to `127.0.0.1:25598`; it lives under `examples/client-test` and is not needed by users.
-- No NeoForge, Mixin, signal library or build plugin was involved.
+```text
+FOABIC_REGISTER platform=neoforge block=foabic_test:test_block item=foabic_test:test_block
+FOABIC_SIGNAL name=server_started platform=neoforge mc=26.3 mods=1
+FOABIC_STATUS platform=neoforge block_registered=true item_registered=true
+```
+
+Both runs on both platforms produced exactly these three lines.
+
+## What this proves
+
+- The Gradle-built Fabric jar starts, loads a Foabic mod, evaluates the block/item factories, registers both objects, and posts `ServerStartedSignal`.
+- The Gradle-built NeoForge jar starts, loads the same mod jar, defers block/item construction to `RegisterEvent`, registers both objects, and posts the same signal.
+- Registry lookups at signal time return both objects on both platforms.
+- The signal bus, mod discovery, metadata parser, dependency check and classloader path all work in a real server process.
+- The same platform-neutral example jar is used on both platforms.
+- Repeating the process produces identical Foabic observations.
+
+## What this does not prove
+
+- **Client rendering, assets, or a real right-click.** The v1.0 acceptance contract uses `ServerStartedSignal` precisely so it does not depend on a client. The `UseBlockSignal` bridge compiles and is unit-tested, but it is not part of the server acceptance evidence.
+- **Mixin, a build plugin for mod authors, universal packaging, or a full signal library.** These are v1.1/later by design.
+- **Any Minecraft version other than 26.3, or any Fabric/NeoForge version other than the table above.**
+- **Binary compatibility across future Foabic releases.**
+
+The NeoForge test runtime emits Netty epoll/kqueue environment warnings on Windows because its installed classpath contains non-Windows native transports. They are platform noise, not Foabic load failures; the server still reaches `Done` and the Foabic assertions pass.

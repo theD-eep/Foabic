@@ -1,160 +1,210 @@
-# Foabic Beta 0.2
+# Foabic 1.0
 
-**A small Fabric-hosted mod API for Minecraft 26.1.**
+**A small, platform-neutral mod API for Minecraft 26.3, with real Fabric and NeoForge adapters.**
 
-Foabic 0.2 is deliberately narrow: a Fabric adapter, a typed registry bridge, `submit`, `connect`, and one concrete `UseBlockSignal`. It is not a platform, not a cross-platform abstraction, and not a Mixin framework.
+Foabic 1.0 is deliberately judged by one narrow contract:
 
-![Foabic example block in a Fabric client](docs/images/foabic-client.png)
+> On Minecraft 26.3, one minimal Foabic mod starts on Fabric and on NeoForge, registers one object, receives one signal, and produces the same observable output when the run is repeated.
 
-The screenshot is from an actual Fabric 26.1 client connected to a Fabric 26.1 server: a Foabic mod registered `smoketest:test_block`, the client received it and its assets, right-clicking it fired `UseBlockSignal`, and the action bar shows **“Foabic: Test Block used”**.
+That contract is verified on both dedicated servers. It is the foundation for v1.1, not a claim that every subsystem is finished.
 
-## Beta 0.2 scope
+## Supported matrix
 
-Included:
+| Component | Version |
+| --- | --- |
+| Minecraft Java Edition | **26.3** |
+| Java | **25** |
+| Fabric Loader | **0.20.1** |
+| Fabric API | **0.166.2+26.3** |
+| NeoForge | **26.3.0.115** |
+| Foabic | **1.0.0** |
 
-- Fabric Loader 0.20.1 / Fabric API 0.145.1+26.1 adapter
-- Common client/server initialization for registry parity
-- `ModContext.submit(Registry<T>, id, value)` content registration
-- `ModContext.connect(Class<S>, Consumer<S>)` signal subscription
-- `UseBlockSignal` with mutable `Result`
-- Typed registry views in `FabricRegistries`
-- Server events: lifecycle, tick, level tick, player join/leave
-- Commands, tick scheduler, config, scoped resources
-- One runnable example mod and a client/server verification harness
-
-**Explicitly not in Beta 0.2** (all deferred to Beta 0.3+):
-
-- NeoForge adapter
-- A signal standard library
-- A Gradle/Maven build plugin
-- Mixin support
-- Cross-platform packaging or abstraction
-- Block-model generation, creative-tab helpers, networking, GUI APIs
-
-The point of 0.2 is that the thin path works end to end.
+Only Minecraft 26.3 is supported by 1.0. There is no 26.1 compatibility mode and no cross-version abstraction.
 
 ## Artifacts
 
 ```text
-dist/foabic-api-0.2.0.jar                 46.6 KiB   compile-time API
-dist/foabic-fabric-0.2.0.jar              92.9 KiB   Fabric mod (API + loader + adapter)
-dist/foabic-example-smoketest-0.2.0.jar    7.5 KiB   runnable block/signal example
+dist/foabic-fabric-1.0.0.jar             68 KiB   Fabric adapter + API + loader
+dist/foabic-neoforge-1.0.0.jar           69 KiB   NeoForge adapter + API + loader
+dist/foabic-api-1.0.0.jar                34 KiB   compile-time API only
+dist/foabic-example-minimal-1.0.0.jar     4 KiB   platform-neutral acceptance mod
 ```
 
-No runtime dependency is bundled beyond the JDK and Fabric API.
+The platform jars are separate. The API and loader are bundled into each adapter jar, so a user installs one platform jar, not three. There is no universal/merged jar.
+
+`gradlew build` also writes `dist/SHA256SUMS` for release verification.
 
 ## Install
 
-Prerequisites:
+### Fabric
 
-- Java 25
-- Fabric Loader 0.20.1 for Minecraft 26.1
-- Fabric API 0.145.1+26.1
-
-Place in the Fabric server's `mods/`:
+Place in the Fabric `mods/` directory:
 
 ```text
 mods/
-  fabric-api-0.145.1+26.1.jar
-  foabic-fabric-0.2.0.jar
-  foabic-example-smoketest-0.2.0.jar
+  fabric-api-0.166.2+26.3.jar
+  foabic-fabric-1.0.0.jar
 ```
 
-Place the same three jars in the Fabric client's `mods/`. Foabic initializes content mods on both sides so Fabric registry sync sees identical block/item IDs.
+Place Foabic mods in `foabic-mods/`:
 
-Pure logic-only Foabic mods can instead live in `foabic-mods/`. A mod that ships `assets/` must also be visible to Fabric as a resource-bearing mod; the example does this with an entrypoint-free `fabric.mod.json` in addition to `foabic.mod`.
+```text
+foabic-mods/
+  my-foabic-mod.jar
+```
 
-## The example mod
+### NeoForge
 
-The example is a normal Fabric resource mod plus Foabic logic:
+Place in the NeoForge `mods/` directory:
 
-- `foabic.mod` is read by Foabic.
-- `fabric.mod.json` has **no entrypoint**. Fabric only needs it to expose the jar's `assets/` as a built-in resource pack.
-- Foabic scans both `foabic-mods/` and Fabric's `mods/` for `foabic.mod`.
+```text
+mods/
+  foabic-neoforge-1.0.0.jar
+```
 
-It registers a block and a block item:
+Place Foabic mods in `foabic-mods/`:
+
+```text
+foabic-mods/
+  my-foabic-mod.jar
+```
+
+Foobic mods are **not** Fabric or NeoForge mods. They contain `foabic.mod` and use the common API; they must not be placed in `mods/`. A Foabic mod that needs loader-visible resources is outside the 1.0 surface.
+
+The Foabic adapter must be present on both client and server for a client connection, because content registration runs on both logical sides. The v1.0 acceptance test uses dedicated servers.
+
+## Minimal mod
 
 ```java
-ResourceLocation id = ResourceLocation.of("smoketest", "test_block");
-Identifier mcId = Identifier.fromNamespaceAndPath(id.namespace(), id.path());
-ResourceKey<Block> key = ResourceKey.create(Registries.BLOCK, mcId);
+public final class MyMod implements ModInitializer {
+    private static final ResourceLocation BLOCK_ID =
+            ResourceLocation.of("mymod", "test_block");
+    private static final Identifier MC_ID =
+            Identifier.fromNamespaceAndPath("mymod", "test_block");
+    private static final ResourceKey<Item> ITEM_KEY =
+            ResourceKey.create(Registries.ITEM, MC_ID);
 
-Block block = new Block(BlockBehaviour.Properties.of()
-        .setId(key)
-        .strength(1.0F));
+    @Override
+    public void onInitialize(ModContext context) {
+        ResourceKey<Block> blockKey = ResourceKey.create(Registries.BLOCK, MC_ID);
+        Registration<Block> block = context.submit(
+                FoabicRegistries.BLOCKS, BLOCK_ID,
+                () -> new Block(BlockBehaviour.Properties.of()
+                        .setId(blockKey)
+                        .strength(1.0F)));
 
-context.submit(FabricRegistries.BLOCKS, id, block);
+        context.submit(FoabicRegistries.ITEMS, BLOCK_ID,
+                () -> new BlockItem(block.get(), new Item.Properties().setId(ITEM_KEY)));
+
+        context.connect(ServerStartedSignal.class, signal -> {
+            context.logger().log(System.Logger.Level.INFO,
+                    "FOABIC_SIGNAL platform={0} mc={1} mods={2}",
+                    signal.platform(), signal.minecraftVersion(), signal.modCount());
+        });
+    }
+}
 ```
 
-It listens to the one signal:
+`foabic.mod`:
+
+```properties
+id=mymod
+name=My Mod
+version=1.0.0
+entrypoint=mymod.MyMod
+environment=*
+api=^1.0.0
+```
+
+## Why registrations are factories
+
+Fabric lets a mod construct a `Block` during `onInitialize`. NeoForge 26.3 freezes the vanilla registries before mod constructors run; the `Block` constructor creates an intrusive holder, so constructing a block in the Foabic constructor throws:
+
+```text
+java.lang.IllegalStateException: Registry is already frozen
+```
+
+Foabic therefore accepts a **factory**:
+
+- Fabric evaluates it immediately during `onInitialize` and registers the value.
+- NeoForge stores it and evaluates it inside `RegisterEvent`, where the target registry is writable.
+
+A `Registration<T>` handle lets a later factory depend on an earlier object:
 
 ```java
-context.connect(UseBlockSignal.class, signal -> {
-    signal.player().sendActionBar("Foabic: Test Block used");
-    signal.setResult(UseBlockSignal.Result.SUCCESS);
-});
+Registration<Block> block = context.submit(FoabicRegistries.BLOCKS, id, blockFactory);
+context.submit(FoabicRegistries.ITEMS, id,
+        () -> new BlockItem(block.get(), itemProperties));
 ```
 
-On player join, the example places the block two blocks east and one block up. A real Fabric client right-clicks it; the rendered block and action bar are visible in the screenshot above. The same server-side path can be exercised with `/foabictest use`, which uses a Fabric `FakePlayer` and prints `FOABIC_USE_RESULT=Success[...]`.
+`Registration.get()` throws a clear error if called before the object has been created. Calling it from a signal listener, or from a later registration factory, is safe.
 
-## Registry
+## Signals in 1.0
 
-`FabricRegistries` exposes typed views over Minecraft's built-in registries:
+v1.0 ships a signal kernel and two concrete signals, not a signal standard library:
 
-```java
-FabricRegistries.BLOCKS
-FabricRegistries.ITEMS
-FabricRegistries.ENTITY_TYPES
-FabricRegistries.SOUND_EVENTS
-FabricRegistries.PARTICLE_TYPES
-FabricRegistries.BLOCK_ENTITY_TYPES
+- `ServerStartedSignal` — deterministic startup observation, used by the v1.0 acceptance test.
+- `UseBlockSignal` — server-side right-click observation, bridged from Fabric `UseBlockCallback` and NeoForge `PlayerInteractEvent.RightClickBlock`.
+
+`connect` is a thin alias over the shared synchronous `EventBus`. The bus does exact-type dispatch with priorities and isolated listener failures.
+
+`UseBlockSignal` is a plain data signal; it carries `playerName`, `dimension`, `block`, `pos`, `hand` and a mutable `Result`. It does not hold live Minecraft objects.
+
+## Verification
+
+The acceptance mod is [examples/minimal](examples/minimal). The verification script starts each server twice, removes the test world between runs, waits for `FOABIC_SIGNAL`, and compares the exact Foabic observations.
+
+Expected evidence for each platform:
+
+```text
+FOABIC_REGISTER platform=fabric block=foabic_test:test_block item=foabic_test:test_block
+FOABIC_SIGNAL name=server_started platform=fabric mc=26.3 mods=1
+FOABIC_STATUS platform=fabric block_registered=true item_registered=true
 ```
 
-`submit` delegates to the generic `Registry<T>` interface. Registration must happen before Minecraft freezes the registry; the adapter reports a clear `RegistryException` if it is too late.
+and the same three lines with `platform=neoforge`.
+
+```bat
+gradlew.bat build
+```
+
+The `:coreTest` task prints the test output. Full evidence and environment: [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 ## Build
 
-Windows, JDK 25, official Minecraft 26.1 server jar, Fabric Loader and Fabric API jars:
-
 ```bat
-build.cmd ^
-  -JavaHome "C:\path\to\jdk-25" ^
-  -McJar "C:\path\to\server.jar" ^
-  -FabricLoaderJar "C:\path\to\fabric-loader-0.20.1.jar" ^
-  -FabricApiJar "C:\path\to\fabric-api-0.145.1+26.1.jar"
+set JAVA_HOME=C:\path\to\jdk-25
+gradlew.bat build
 ```
 
-The build script:
+The repository ships a Gradle **9.5.1** wrapper. The build uses Java 25 toolchains and produces the four jars in `dist/`.
 
-1. extracts the nested server jar and libraries;
-2. extracts Fabric API's nested modules;
-3. compiles API, loader and Fabric adapter;
-4. packages the Fabric mod and the example;
-5. runs the core tests.
+- `:fabric` uses the non-remapping `net.fabricmc.fabric-loom` plugin for Minecraft 26.3.
+- `:neoforge` uses Gradle's `java` plugin against the official NeoForge 26.3.0.115 universal artifact; this avoids a NeoForm/NFRT download that is unavailable in the current network.
+- `:coreTest` runs the platform-neutral event/version/signal tests.
 
-`build.cmd` bypasses the execution policy for the PowerShell script.
+The default Minecraft and NeoForge inputs are read from `.cache/`; see [docs/BUILD.md](docs/BUILD.md) for the exact files and paths.
 
-## Test evidence
+## Not in 1.0
 
-- Fabric 26.1 server: block/item registered, `submit` and registry lookups succeeded.
-- Fabric 26.1 client: registry sync succeeded, block rendered with its blockstate/model/texture, right-click reached the server.
-- Server log: `FOABIC_USE_SIGNAL block=smoketest:test_block ...`.
-- Client action bar: `Foabic: Test Block used`.
-- Screenshot: [docs/images/foabic-client.png](docs/images/foabic-client.png).
-- Core tests: versions, events, scheduler, commands.
+These are intentionally deferred so v1.0 stays debuggable:
 
-Details: [docs/VERIFICATION.md](docs/VERIFICATION.md).
+- Mixin support — v1.1
+- a Gradle plugin for Foabic mod authors — v1.1
+- universal/cross-platform packaging — v1.1
+- a full signal standard library — later
+- networking, GUI, models, creative tabs, data generation
+- NeoForge/Fabric adapters beyond 26.3
+- binary compatibility across 1.x
 
-## API and scope docs
+## Documentation
 
-- [docs/API.md](docs/API.md)
-- [docs/FABRIC.md](docs/FABRIC.md)
-- [docs/VERIFICATION.md](docs/VERIFICATION.md)
-- [docs/ROADMAP.md](docs/ROADMAP.md)
-
-## Status
-
-`0.2.0` is a Beta preview for Minecraft **26.1** and Fabric. It is not binary-compatible across 0.x. Do not add NeoForge, a signal library, Mixin, or a build plugin to this branch; they belong to 0.3+.
+- [API](docs/API.md)
+- [Fabric adapter](docs/FABRIC.md)
+- [NeoForge adapter](docs/NEOFORGE.md)
+- [Build inputs](docs/BUILD.md)
+- [Verification](docs/VERIFICATION.md)
+- [Roadmap](docs/ROADMAP.md)
 
 ## License
 

@@ -21,27 +21,35 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /** Discovers, resolves and initializes Foabic mods. One-shot per JVM. */
 public final class FoabicLoader {
 
     private static final System.Logger LOG = System.getLogger("Foabic");
+    private static final Set<String> PLATFORMS = Set.of("fabric", "neoforge");
 
     private FoabicLoader() {
     }
 
-    public static FoabicRuntime load(Path gameDirectory, Path modsDirectory, Environment environment) {
+    public static FoabicRuntime load(Path gameDirectory, Path modsDirectory,
+                                     Environment environment, String platform) {
         Objects.requireNonNull(modsDirectory, "modsDirectory");
-        return load(gameDirectory, List.of(modsDirectory), environment);
+        return load(gameDirectory, List.of(modsDirectory), environment, platform);
     }
 
     public static FoabicRuntime load(Path gameDirectory, List<Path> modsDirectories,
-                                     Environment environment) {
+                                     Environment environment, String platform) {
         Objects.requireNonNull(gameDirectory, "gameDirectory");
         Objects.requireNonNull(modsDirectories, "modsDirectories");
         Objects.requireNonNull(environment, "environment");
+        Objects.requireNonNull(platform, "platform");
         if (environment == Environment.UNIVERSAL) {
             throw new ModLoadException("loader environment must be CLIENT or SERVER");
+        }
+        if (!PLATFORMS.contains(platform)) {
+            throw new ModLoadException("unsupported platform '" + platform
+                    + "' (expected fabric or neoforge)");
         }
         if (FoabicInternal.isInstalled()) {
             throw new IllegalStateException("Foabic is already initialized");
@@ -55,12 +63,12 @@ public final class FoabicLoader {
         long started = System.nanoTime();
         try {
             Files.createDirectories(stateRoot.resolve("data"));
-            Files.createDirectories(stateRoot.resolve("config"));
         } catch (IOException e) {
             throw new ModLoadException("cannot create Foabic state directory " + stateRoot, e);
         }
 
-        LOG.log(System.Logger.Level.INFO, "Foabic {0} starting on {1}", Foabic.VERSION, environment);
+        LOG.log(System.Logger.Level.INFO,
+                "Foabic {0} starting on {1}/{2}", Foabic.VERSION, platform, environment);
         List<DiscoveredMod> discovered = ModDiscoverer.discover(modsDirs, environment, LOG);
         List<DiscoveredMod> ordered = new DependencyResolver(discovered, LOG).resolve();
 
@@ -78,17 +86,16 @@ public final class FoabicLoader {
         for (DiscoveredMod mod : ordered) {
             ModMetadata metadata = mod.metadata();
             Path dataDirectory = stateRoot.resolve("data").resolve(metadata.id());
-            Path configPath = stateRoot.resolve("config").resolve(metadata.id() + ".properties");
             try {
                 Files.createDirectories(dataDirectory);
             } catch (IOException e) {
                 throw new ModLoadException("cannot create data directory for " + metadata.id(), e);
             }
-            containers.add(new ModContainerImpl(metadata, mod.jar(), dataDirectory, configPath, classLoader));
+            containers.add(new ModContainerImpl(metadata, mod.jar(), dataDirectory, classLoader));
         }
 
         List<ModContainer> publicContainers = List.copyOf(containers);
-        LoaderRuntime runtime = new LoaderRuntime(environment, gameDir, publicContainers);
+        LoaderRuntime runtime = new LoaderRuntime(platform, environment, gameDir, publicContainers);
         FoabicInternal.install(runtime);
 
         try {
@@ -97,7 +104,6 @@ public final class FoabicLoader {
             }
         } catch (Throwable failure) {
             FoabicInternal.uninstall(runtime);
-            for (ModContainerImpl container : containers) container.close();
             try {
                 classLoader.close();
             } catch (IOException ignored) {
@@ -108,8 +114,9 @@ public final class FoabicLoader {
         }
 
         long millis = (System.nanoTime() - started) / 1_000_000L;
-        LOG.log(System.Logger.Level.INFO, "Foabic loaded {0} mod(s) in {1} ms",
-                containers.size(), millis);
+        LOG.log(System.Logger.Level.INFO,
+                "Foabic loaded {0} mod(s) in {1} ms on {2}",
+                containers.size(), millis, platform);
         return runtime;
     }
 

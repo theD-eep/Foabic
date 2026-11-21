@@ -1,8 +1,10 @@
 /**
- * Foabic's public modding API for Minecraft 26.n+.
+ * Foabic's public modding API for Minecraft 26.3.
  *
- * <p>Content registration is platform-specific: on Fabric, use
- * {@code dev.foabic.fabric.registry.FabricRegistries} and the typed
- * {@link dev.foabic.api.registry.Registry} views it exposes.
+ * <p>Content registration is platform-neutral:
+ * {@link dev.foabic.api.registry.FoabicRegistries#BLOCKS} and
+ * {@link dev.foabic.api.registry.FoabicRegistries#ITEMS} work identically on
+ * Fabric and NeoForge. The active adapter binds the concrete views before mods
+ * are initialized.
  */
 package dev.foabic.api;

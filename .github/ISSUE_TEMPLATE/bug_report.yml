@@ -8,9 +8,9 @@ body:
       value: |
         Before filing:
 
-        - Use Minecraft **26.1**, Fabric Loader **0.20.1** and Fabric API **0.145.1+26.1**.
-        - Install `foabic-fabric-0.2.0.jar` in Fabric's `mods/`; logic-only mods may go in `foabic-mods/`.
-        - Do not mix Foabic with NeoForge or a second mod loader.
+        - Use Minecraft **26.3**, Java **25**, and either Fabric Loader **0.20.1** + Fabric API **0.166.2+26.3**, or NeoForge **26.3.0.115**.
+        - Install the matching Foabic platform jar in `mods/`; Foabic mods go in `foabic-mods/`.
+        - Do not mix Fabric and NeoForge in one instance.
 
   - type: textarea
     id: what
@@ -31,19 +31,29 @@ body:
     validations:
       required: true
 
-  - type: input
-    id: foabic
+  - type: dropdown
+    id: platform
     attributes:
-      label: Foabic version
-      placeholder: 0.2.0
+      label: Platform
+      options:
+        - Fabric
+        - NeoForge
     validations:
       required: true
 
   - type: input
-    id: fabric
+    id: foabic
     attributes:
-      label: Fabric Loader / Fabric API
-      placeholder: 0.20.1 / 0.145.1+26.1
+      label: Foabic version
+      placeholder: 1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: loader
+    attributes:
+      label: Loader / API versions
+      placeholder: Fabric 0.20.1 / API 0.166.2+26.3, or NeoForge 26.3.0.115
     validations:
       required: true
 
@@ -63,8 +73,8 @@ body:
     attributes:
       label: Where are the Foabic mods installed?
       options:
-        - Fabric mods/
         - foabic-mods/
+        - mods/
         - Both
         - Not sure
     validations:
@@ -74,7 +84,7 @@ body:
     id: logs
     attributes:
       label: Logs
-      description: Startup log (including Foabic lines) and the crash stack.
+      description: Startup log (including FOABIC_ and Foabic lines) and the crash stack.
       render: text
     validations:
       required: true
@@ -86,7 +96,7 @@ body:
       options:
         - label: I searched existing issues and this is not a duplicate.
           required: true
-        - label: I use the official 26.1 server/client jars from the versions above.
+        - label: I use the official 26.3 server/client jars from the versions above.
           required: true
         - label: I did not modify the Foabic jars.
           required: true

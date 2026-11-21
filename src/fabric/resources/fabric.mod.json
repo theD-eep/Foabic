@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "foabic",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "name": "Foabic",
-  "description": "A lightweight Fabric-hosted mod API and registry layer for Minecraft 26.x.",
+  "description": "A small platform-neutral mod API for Minecraft 26.3. Fabric adapter.",
   "authors": ["Foabic contributors"],
   "license": "MIT",
   "environment": "*",
@@ -12,7 +12,7 @@
   },
   "depends": {
     "fabricloader": ">=0.20.1",
-    "minecraft": ">=26.1 <26.2",
-    "fabric-api": ">=0.145.0"
+    "minecraft": "~26.3",
+    "fabric-api": ">=0.166.2"
   }
 }

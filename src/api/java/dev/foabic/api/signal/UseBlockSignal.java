@@ -1,7 +1,5 @@
 package dev.foabic.api.signal;
 
-import dev.foabic.api.game.Level;
-import dev.foabic.api.game.Player;
 import dev.foabic.api.util.BlockPos;
 import dev.foabic.api.util.ResourceLocation;
 
@@ -11,8 +9,9 @@ import java.util.Objects;
  * A player right-clicks a block. Listeners may change {@link #result()} to
  * consume the interaction or report success.
  *
- * <p>This is intentionally one concrete signal, not a general signal standard
- * library. Foabic 0.2 only ships the hooks needed by the Fabric adapter.
+ * <p>This is a plain data signal: it deliberately holds no live Minecraft
+ * objects. Fabric and NeoForge adapters translate their native interaction
+ * result into {@link Result} and back.
  */
 public final class UseBlockSignal {
 
@@ -28,28 +27,28 @@ public final class UseBlockSignal {
         FAIL
     }
 
-    private final Player player;
-    private final Level level;
+    private final String playerName;
+    private final String dimension;
     private final ResourceLocation block;
     private final BlockPos pos;
     private final Hand hand;
     private Result result = Result.PASS;
 
-    public UseBlockSignal(Player player, Level level, ResourceLocation block,
+    public UseBlockSignal(String playerName, String dimension, ResourceLocation block,
                           BlockPos pos, Hand hand) {
-        this.player = Objects.requireNonNull(player, "player");
-        this.level = Objects.requireNonNull(level, "level");
+        this.playerName = Objects.requireNonNull(playerName, "playerName");
+        this.dimension = Objects.requireNonNull(dimension, "dimension");
         this.block = Objects.requireNonNull(block, "block");
         this.pos = Objects.requireNonNull(pos, "pos");
         this.hand = Objects.requireNonNull(hand, "hand");
     }
 
-    public Player player() {
-        return player;
+    public String playerName() {
+        return playerName;
     }
 
-    public Level level() {
-        return level;
+    public String dimension() {
+        return dimension;
     }
 
     public ResourceLocation block() {
@@ -74,6 +73,7 @@ public final class UseBlockSignal {
 
     @Override
     public String toString() {
-        return "UseBlockSignal[" + player.name() + " " + block + " at " + pos + "]";
+        return "UseBlockSignal[" + playerName + " " + block + " at " + pos
+                + " hand=" + hand + " result=" + result + "]";
     }
 }

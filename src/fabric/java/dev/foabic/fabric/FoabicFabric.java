@@ -2,6 +2,7 @@ package dev.foabic.fabric;
 
 import dev.foabic.api.Foabic;
 import dev.foabic.api.mod.Environment;
+import dev.foabic.fabric.registry.FabricRegistries;
 import dev.foabic.loader.FoabicLoader;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
@@ -11,13 +12,15 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Fabric entrypoint. Foabic content mods are initialized on both client and
- * server so vanilla registry sync sees the same block/item IDs on both sides.
- * Server-only events and signals are registered only in a dedicated server
- * environment.
+ * Fabric entrypoint.
+ *
+ * <p>Foabic content mods are initialized on both client and server so the
+ * vanilla registry sync sees identical block/item ids. Server-only signals are
+ * registered only in a dedicated-server environment.
  */
 public final class FoabicFabric implements ModInitializer {
 
+    public static final String PLATFORM = "fabric";
     private static final System.Logger LOG = System.getLogger("Foabic/fabric");
 
     @Override
@@ -28,13 +31,15 @@ public final class FoabicFabric implements ModInitializer {
                 ? Environment.CLIENT
                 : Environment.SERVER;
 
+        FabricRegistries.bind();
         FoabicLoader.load(gameDirectory,
-                List.of(gameDirectory.resolve("foabic-mods"), gameDirectory.resolve("mods")),
-                environment);
+                List.of(gameDirectory.resolve("foabic-mods")),
+                environment, PLATFORM);
 
-        if (environment == Environment.SERVER) {
-            FabricEvents.register();
-        }
+        // ServerLifecycleEvents also covers an integrated server on a client.
+        // The use-block bridge filters to the logical server, so there is no
+        // double dispatch.
+        FabricSignals.register();
         LOG.log(System.Logger.Level.INFO,
                 "Foabic {0} attached to Fabric ({1}) with {2} Foabic mod(s)",
                 Foabic.VERSION, environment, Foabic.mods().size());

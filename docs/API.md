@@ -1,6 +1,6 @@
-# Foabic Beta 0.2 API
+# Foabic 1.0 API
 
-The public surface is intentionally small. Internal loader and Fabric bridge classes are not a compatibility promise.
+The public surface is intentionally small. `dev.foabic.loader` and the adapter internals are not a compatibility promise.
 
 ## Entrypoint
 
@@ -8,7 +8,7 @@ The public surface is intentionally small. Internal loader and Fabric bridge cla
 public final class MyMod implements ModInitializer {
     @Override
     public void onInitialize(ModContext context) {
-        // submit content, connect signals, register commands
+        // register content and connect signals
     }
 }
 ```
@@ -18,126 +18,141 @@ public final class MyMod implements ModInitializer {
 ```java
 ModContainer mod();
 EventBus events();
-Scheduler scheduler();
-CommandRegistry commands();
 Environment environment();
+String platform();                 // "fabric" or "neoforge"
 System.Logger logger();
-Config config();
-ModResources resources();
 
-<T> T submit(Registry<T> registry, ResourceLocation id, T value);
+<T> Registration<T> submit(Registry<T> registry, ResourceLocation id,
+                           Supplier<? extends T> factory);
 <S> EventSubscription connect(Class<S> signalType, Consumer<S> listener);
 ```
 
-## submit
+## Registry
 
 ```java
-context.submit(FabricRegistries.BLOCKS, id, block);
-context.submit(FabricRegistries.ITEMS, id, item);
+public interface Registry<T> {
+    ResourceLocation key();
+    Registration<T> register(ResourceLocation id, Supplier<? extends T> factory);
+    Optional<T> get(ResourceLocation id);
+    T getOrThrow(ResourceLocation id);
+    boolean contains(ResourceLocation id);
+    List<ResourceLocation> ids();
+    Stream<T> stream();
+    int size();
+}
 ```
 
-`submit` delegates to a generic `dev.foabic.api.registry.Registry<T>`:
+The two stable views are:
 
 ```java
-ResourceLocation key();
-<V extends T> V register(ResourceLocation id, V value);
-Optional<T> get(ResourceLocation id);
-T getOrThrow(ResourceLocation id);
-boolean contains(ResourceLocation id);
-List<ResourceLocation> ids();
-Stream<T> stream();
-int size();
+FoabicRegistries.BLOCKS
+FoabicRegistries.ITEMS
 ```
 
-Registration timing matters. On Fabric, perform registration during `onInitialize`; the adapter initializes Foabic content mods on both client and server before registries freeze.
+They are bound by the platform adapter before any Foabic mod is loaded. A mod does not import `FabricRegistries` or `NeoForgeRegistries`.
 
-`FabricRegistries` fields:
-
-- `BLOCKS`
-- `ITEMS`
-- `ENTITY_TYPES`
-- `SOUND_EVENTS`
-- `PARTICLE_TYPES`
-- `BLOCK_ENTITY_TYPES`
-
-## connect and UseBlockSignal
+### Registration handle
 
 ```java
-context.connect(UseBlockSignal.class, signal -> {
-    if (signal.block().equals(ResourceLocation.parse("mymod:button"))) {
-        signal.player().sendActionBar("clicked");
-        signal.setResult(UseBlockSignal.Result.SUCCESS);
-    }
-});
+Registration<T> registration = context.submit(FoabicRegistries.BLOCKS, id, factory);
+registration.id();          // the id passed in
+registration.isPresent();   // whether the factory has run
+registration.get();         // throws if it has not run yet
 ```
 
-`UseBlockSignal` fields:
+### Why factories
+
+NeoForge 26.3 freezes the vanilla registries before mod constructors. A `Block` constructor creates an intrusive holder and throws if the registry is frozen. Foabic stores the factory and evaluates it in `RegisterEvent`.
+
+Fabric evaluates the factory immediately during `onInitialize` and registers the value.
+
+A later factory can depend on an earlier registration:
 
 ```java
-Player player();
-Level level();
-ResourceLocation block();
-BlockPos pos();          // Foabic's MC-free x/y/z record
-Hand hand();             // MAIN_HAND / OFF_HAND
-Result result();         // PASS / SUCCESS / CONSUME / FAIL
-void setResult(Result result);
+Registration<Block> block = context.submit(FoabicRegistries.BLOCKS, id, blockFactory);
+context.submit(FoabicRegistries.ITEMS, id,
+        () -> new BlockItem(block.get(), itemProperties));
 ```
 
-The Fabric adapter filters to the server side, translates the result back to Fabric's `UseBlockCallback` result, and posts exactly one signal per server-side block use. `connect` is a one-line alias for `events().subscribe`, not a general signal framework.
+Do not call `get()` in the same initializer before the platform has run the factory. On Fabric it will work; on NeoForge it will throw. This asymmetry is deliberate and visible rather than hidden.
 
-## Events
+## Signals
 
-- `ServerStartingEvent`
-- `ServerStartedEvent`
-- `ServerTickEvent` / `ServerTickEndEvent`
-- `LevelTickEvent` / `LevelTickEndEvent`
-- `PlayerJoinEvent` / `PlayerLeaveEvent`
-- `ServerStoppingEvent` / `ServerStoppedEvent`
+v1.0 is a signal kernel plus two concrete signals. It is not a full signal standard library.
 
-Event bus semantics:
+### ServerStartedSignal
+
+```java
+public final class ServerStartedSignal {
+    String platform();
+    String minecraftVersion();
+    int modCount();
+}
+```
+
+Posted once per dedicated/integrated server after startup. It is the deterministic v1.0 acceptance signal.
+
+### UseBlockSignal
+
+```java
+public final class UseBlockSignal {
+    String playerName();
+    String dimension();
+    ResourceLocation block();
+    BlockPos pos();
+    Hand hand();          // MAIN_HAND / OFF_HAND
+    Result result();      // PASS / SUCCESS / CONSUME / FAIL
+    void setResult(Result result);
+}
+```
+
+Posted once for a server-side block use. Fabric bridges `UseBlockCallback`; NeoForge bridges `PlayerInteractEvent.RightClickBlock`.
+
+### EventBus
+
+```java
+EventBus bus = Foabic.events();
+EventSubscription sub = bus.subscribe(MySignal.class, signal -> { ... });
+sub.close();
+```
+
+Semantics:
 
 - synchronous, exact-type dispatch;
 - priorities `HIGHEST` … `LOWEST`;
-- listener exceptions are isolated and logged;
+- listener exceptions are isolated and reported to the bus error handler;
 - `EventSubscription.close()` removes a listener.
 
-These events are server-side. `UseBlockSignal` is the only client-relevant signal in 0.2, and it is delivered on the server.
+`connect` is a one-line alias for `events().subscribe`.
 
-## Commands
-
-```java
-context.commands().literal("home")
-        .requires(source -> source.hasPermission(2))
-        .executes(command -> {
-            command.source().sendMessage("home");
-            return 1;
-        });
-```
-
-Supported argument types: `STRING`, `WORD`, `GREEDY_STRING`, `INTEGER`, `LONG`, `FLOAT`, `DOUBLE`, `BOOLEAN`. Commands are translated to Brigadier through Fabric's command registration callback.
-
-## Scheduler
+## Environment
 
 ```java
-context.scheduler().schedule(20, () -> { /* one second */ });
-Task task = context.scheduler().scheduleRepeating(0, 20, self -> { /* ... */ });
-task.cancel();
+Environment.CLIENT
+Environment.SERVER
+Environment.UNIVERSAL   // metadata only
 ```
 
-Tick-based, server-thread-only, fixed period, no catch-up.
+A mod with `environment=*` loads on both. A dedicated-server acceptance mod is `SERVER` at runtime even if it is universal in metadata.
 
-## Config and resources
+## Versioning
 
-```java
-Config config = context.config();          // .foabic/config/<id>.properties
-config.set("enabled", true);
-config.save();
-
-byte[] icon = context.resources().read("assets/example/icon.png");
-```
-
-`ModResources` is scoped to the current mod jar and rejects path traversal.
+- `Foabic.VERSION` is `1.0.0`.
+- `Foabic.MINECRAFT` is `26.3`.
+- `foabic.mod` has `api=^1.0.0`; the loader rejects a mod whose range does not include the runtime version.
+- `depends` uses `id@range`, with ranges such as `*`, `^1.0.0`, `>=1.0.0 <2.0.0`.
 
 ## Stability
 
-`0.2.x` is a Beta line for Minecraft 26.1 + Fabric. Internal classes, loader behavior, and the example may change in 0.3. The public API is not yet frozen.
+The v1.0 public API is the package `dev.foabic.api` excluding `dev.foabic.api.internal`. Loader and adapter packages may change.
+
+v1.0 promises behavior only on the supported matrix. It does not promise binary compatibility across future 1.x releases, nor compatibility with other Minecraft, Fabric or NeoForge versions.
+
+## Not in 1.0
+
+- Mixin
+- Gradle/Maven build plugin
+- universal packaging
+- full signal standard library
+- networking, GUI, models, creative tabs, data generation
+- client-side rendering helpers

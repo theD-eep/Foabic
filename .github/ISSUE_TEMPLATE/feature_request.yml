@@ -6,11 +6,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        Beta 0.2 is intentionally narrow. Read [docs/ROADMAP.md](../blob/main/docs/ROADMAP.md) first.
+        Foabic 1.0 is intentionally narrow. Read [docs/ROADMAP.md](../blob/main/docs/ROADMAP.md) first.
 
-        Deferred to 0.3 and **not** accepted on this branch: NeoForge, a signal standard library,
-        a Gradle/Maven build plugin, Mixin, cross-platform packaging, networking, GUI APIs,
-        model or creative-tab generation.
+        Mixin, a Gradle/Maven build plugin and universal packaging are planned for **v1.1**, not v1.0.
+        Networking, GUI, data generation and a full signal library are later.
 
   - type: textarea
     id: problem
@@ -39,9 +38,9 @@ body:
     attributes:
       label: Design constraints
       options:
-        - label: This does not require a third-party runtime dependency beyond the JDK and Fabric API.
+        - label: This does not require a third-party runtime dependency beyond the JDK and the platform loader/API.
           required: true
         - label: This does not require classpath scanning or annotation reflection.
           required: true
-        - label: I understand that 0.x does not guarantee binary compatibility.
+        - label: I understand that 1.x does not guarantee binary compatibility across releases.
           required: true

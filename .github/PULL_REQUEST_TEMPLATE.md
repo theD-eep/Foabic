@@ -1,6 +1,6 @@
 ## What changed
 
-<!-- Which modules: api / loader / fabric / examples / docs? -->
+<!-- Which modules: api / loader / fabric / neoforge / examples / docs? -->
 
 ## Why
 
@@ -8,10 +8,11 @@
 
 ## Verification
 
-- [ ] Full build passes and the suite prints `ALL TESTS PASSED`
-- [ ] Adapter changes were exercised on a real Fabric 26.1 client and/or server (describe how)
+- [ ] Full build passes and the suite prints `ALL TESTS PASSED (4)`
+- [ ] Adapter changes were exercised on a real Fabric 26.3 and/or NeoForge 26.3.0.115 server (describe how)
+- [ ] For both-adapter changes, the Gradle-built jars were exercised twice per platform as described in `docs/VERIFICATION.md`
 - [ ] Public API changes updated `docs/API.md` and `CHANGELOG.md`
-- [ ] No `build/`, `run/`, `client-run/`, `server.jar` or game files are included
+- [ ] No `.cache/`, `build/`, `run/`, server jar or game files are included
 - [ ] `dist/` jars were not touched by hand (maintainers rebuild them at release)
 
 ## Notes

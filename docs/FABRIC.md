@@ -1,82 +1,100 @@
 # Fabric adapter
 
-## Why Fabric Loader
+## Version
 
-Foabic 0.2 does not ship a Java agent, Mixin transformer, launcher or classpath patcher. Fabric Loader already supplies a stable entrypoint/mixin environment; Foabic attaches to it as an ordinary Fabric mod.
+Foabic 1.0 targets Fabric Loader **0.20.1** and Fabric API **0.166.2+26.3** on Minecraft **26.3**.
 
-This keeps Beta 0.2 small and makes the first working path testable.
+The adapter is an ordinary Fabric mod with `environment: "*"` and one common entrypoint:
+
+```json
+{
+  "entrypoints": { "main": ["dev.foabic.fabric.FoabicFabric"] },
+  "depends": {
+    "fabricloader": ">=0.20.1",
+    "minecraft": "~26.3",
+    "fabric-api": ">=0.166.2"
+  }
+}
+```
+
+## Gradle project
+
+`:fabric` is a normal Gradle subproject using the **non-remapping** Loom plugin:
+
+```kotlin
+plugins {
+    id("net.fabricmc.fabric-loom") version "1.14.10"
+}
+
+dependencies {
+    minecraft("com.mojang:minecraft:26.3")
+    implementation("net.fabricmc:fabric-loader:0.20.1")
+    implementation("net.fabricmc.fabric-api:fabric-api:0.166.2+26.3")
+}
+```
+
+Minecraft 26.3 is unobfuscated, so there is no `mappings` dependency and no `modImplementation` configuration. The Fabric API POM contributes its module jars to the compile classpath. Build with `gradlew.bat build`.
 
 ## Initialization
 
-`FoabicFabric` implements Fabric's common `ModInitializer` and runs on both sides:
+`FoabicFabric` runs on both client and server:
 
 1. Read `FabricLoader.getGameDir()`.
-2. Determine `Environment.CLIENT` or `Environment.SERVER` from `FabricLoader.getEnvironmentType()`.
-3. Initialize Foabic mods from:
-   - `foabic-mods/` (logic-only jars), and
-   - `mods/` (jars that also need Fabric resource visibility).
-4. On a dedicated server, register Fabric event bridges.
+2. Map `EnvType.CLIENT` / `EnvType.SERVER` to `Environment`.
+3. Bind `FoabicRegistries.BLOCKS` and `ITEMS` to `BuiltInRegistries`.
+4. Load Foabic mods from `foabic-mods/`.
+5. Register the signal bridges. `UseBlockCallback` filters to the logical server; `ServerLifecycleEvents` also covers an integrated server on a client.
 
-Both sides must see the same block/item IDs. That is why content mods run on the client as well; otherwise Fabric's registry sync disconnects the client with:
-
-```text
-Received 2 registry entries that are unknown to this client.
-```
-
-## Fabric events used
-
-| Foabic event | Fabric hook |
-| --- | --- |
-| server starting/started/stopping/stopped | `ServerLifecycleEvents` |
-| server tick start/end | `ServerTickEvents.START_SERVER_TICK` / `END_SERVER_TICK` |
-| level tick start/end | `ServerTickEvents.START_LEVEL_TICK` / `END_LEVEL_TICK` |
-| player join/leave | `ServerPlayConnectionEvents.JOIN` / `DISCONNECT` |
-| commands | `CommandRegistrationCallback.EVENT` |
-| `UseBlockSignal` | `UseBlockCallback.EVENT` |
-
-`UseBlockCallback` is filtered to `!level.isClientSide()`, so a signal is posted once on the logical server, not once per side.
+Content runs on both sides so Fabric registry sync sees identical block/item ids. The v1.0 acceptance run is a dedicated server; it still exercises the same adapter that would run on a client.
 
 ## Registry bridge
 
-`FabricRegistry<T>` wraps a `net.minecraft.core.Registry<T>`:
+`FabricRegistry<T>` wraps a `net.minecraft.core.Registry<T>`. A registration factory is evaluated immediately:
 
 ```java
-return net.minecraft.core.Registry.register(registry, mcId, value);
+T value = factory.get();
+Registry.register(registry, id, value);
+return new FabricRegistration<>(id, value);
 ```
 
-`FabricRegistries` exposes block, item, entity type, sound, particle and block-entity views. Registration must occur before Minecraft's freeze; a late call raises `RegistryException` with that explanation.
+A duplicate id or a frozen registry becomes a descriptive `RegistryException`. Register from `onInitialize`, before Minecraft freezes its registries.
 
-The adapter intentionally does **not** provide creative-tab integration, data generation, model generation, or automatic item registration. 0.2 is about proving the core registration/signal path.
+## Signals
 
-## Two mod directories
+| Foabic signal | Fabric hook |
+| --- | --- |
+| `ServerStartedSignal` | `ServerLifecycleEvents.SERVER_STARTED` |
+| `UseBlockSignal` | `UseBlockCallback.EVENT` |
+
+`UseBlockCallback` is filtered to `!level.isClientSide()` and `ServerPlayer`, so a signal is posted once on the logical server. The `UseBlockSignal.Result` is mapped back to `InteractionResult`:
+
+```text
+PASS -> PASS
+SUCCESS -> SUCCESS
+CONSUME -> CONSUME
+FAIL -> FAIL
+```
+
+Foabic does not register a client-side use-block bridge, so there is no double dispatch.
+
+## Mod layout
 
 ```text
 mods/
-  fabric-api-...jar
-  foabic-fabric-...jar
-  my-content-mod.jar      # optional: has fabric.mod.json + assets/
+  fabric-api-0.166.2+26.3.jar
+  foabic-fabric-1.0.0.jar
 foabic-mods/
-  my-logic-mod.jar        # logic only, no fabric.mod.json
+  my-foabic-mod.jar
 ```
 
-A Foabic mod that has no Fabric metadata must not be placed in `mods/`; Fabric Loader will reject it before Foabic runs.
+Foabic mods are not Fabric mods. They contain `foabic.mod`, not `fabric.mod.json`, and belong in `foabic-mods/`.
 
-A content mod that ships `assets/` needs a minimal `fabric.mod.json` with no entrypoint. Fabric loads it as a resource-only mod; Foabic still reads its `foabic.mod` and initializes the logic. The example demonstrates this dual-manifest approach.
+The 0.2 dual-manifest asset arrangement is not part of v1.0. Resource-pack integration for Foabic mods is deferred.
 
-## Build classpath
+## What the adapter does not do
 
-The adapter is compiled against:
-
-- official Minecraft 26.1 server jar (unobfuscated)
-- Minecraft libraries extracted from the server bundle
-- Fabric Loader 0.20.1
-- Fabric API 0.145.1+26.1 nested modules
-
-The build script extracts these automatically from the supplied jars. No Loom, Gradle plugin, mappings or remapping step is used.
-
-## Compatibility
-
-- Tested with Minecraft 26.1, Fabric Loader 0.20.1, Fabric API 0.145.1+26.1.
-- 26.2+ is out of scope for 0.2.
-- Client and server adapters are the same jar; server-only events are registered only in the dedicated-server environment.
-- No NeoForge, no cross-platform abstraction, no Mixin, no build plugin (0.3+).
+- No Mixin configuration.
+- No Fabric API event beyond the two signals above.
+- No asset/resource-pack injection for Foabic mods.
+- No commands, scheduler, config, or GUI API.
+- No client verification harness in the v1.0 acceptance run.

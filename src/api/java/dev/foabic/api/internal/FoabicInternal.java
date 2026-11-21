@@ -1,7 +1,10 @@
 package dev.foabic.api.internal;
 
+import dev.foabic.api.registry.FoabicRegistries;
+
 import java.util.Objects;
 
+/** Internal lifecycle hooks. Adapters call this; mods must not. */
 public final class FoabicInternal {
 
     private static volatile FoabicRuntime runtime;
@@ -30,6 +33,9 @@ public final class FoabicInternal {
     }
 
     public static synchronized void uninstall(FoabicRuntime expected) {
-        if (runtime == expected) runtime = null;
+        if (runtime == expected) {
+            runtime = null;
+            FoabicRegistries.unbindAll();
+        }
     }
 }

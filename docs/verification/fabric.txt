@@ -1,0 +1,18 @@
+Gradle 9.5.1 / Foabic 1.0.0
+Fabric 26.3 / Foabic 1.0.0
+Java 25.0.5.1 (Temurin)
+Fabric Loader 0.20.1
+Fabric API 0.166.2+26.3
+Minecraft 26.3
+
+run 1
+FOABIC_REGISTER platform=fabric block=foabic_test:test_block item=foabic_test:test_block
+FOABIC_SIGNAL name=server_started platform=fabric mc=26.3 mods=1
+FOABIC_STATUS platform=fabric block_registered=true item_registered=true
+
+run 2
+FOABIC_REGISTER platform=fabric block=foabic_test:test_block item=foabic_test:test_block
+FOABIC_SIGNAL name=server_started platform=fabric mc=26.3 mods=1
+FOABIC_STATUS platform=fabric block_registered=true item_registered=true
+
+Result: 3 Foabic observations identical across 2 runs of the Gradle-built jar.

@@ -26,9 +26,10 @@ final class ModDiscoverer {
     }
 
     /**
-     * Scans several directories. Fabric loads resource-bearing Foabic mods from
-     * {@code mods/} (where it can see their assets), while logic-only Foabic
-     * mods can live in {@code foabic-mods/}.
+     * Scans one or more mod directories. The adapter normally passes
+     * {@code foabic-mods/}; multiple directories are supported so a host can
+     * provide an additional platform-specific location without changing the
+     * loader.
      */
     static List<DiscoveredMod> discover(List<Path> modsDirs, Environment environment, System.Logger log) {
         List<Path> jars = new ArrayList<>();

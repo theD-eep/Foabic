@@ -4,14 +4,17 @@ import dev.foabic.api.util.ResourceLocation;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
  * A platform registry view.
  *
- * <p>Registrations must happen during mod initialization, before Minecraft
- * freezes its registries. The Fabric adapter wraps the corresponding vanilla
- * registry and reports a clear error when registration is too late.
+ * <p>Registrations are expressed as factories, not pre-built values. Fabric
+ * evaluates a factory immediately during mod initialization. NeoForge
+ * evaluates it inside {@code RegisterEvent}, which is the only point where
+ * constructing a {@code Block} is legal in 26.3. This is why the common API
+ * does not accept an already-built block.
  *
  * @param <T> the registered element type
  */
@@ -19,7 +22,7 @@ public interface Registry<T> {
 
     ResourceLocation key();
 
-    <V extends T> V register(ResourceLocation id, V value);
+    Registration<T> register(ResourceLocation id, Supplier<? extends T> factory);
 
     Optional<T> get(ResourceLocation id);
 

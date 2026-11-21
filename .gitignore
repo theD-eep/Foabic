@@ -7,3 +7,8 @@ screenshots/
 .vscode/
 *.iml
 .DS_Store
+dist/
+.cache/
+.gradle/
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
