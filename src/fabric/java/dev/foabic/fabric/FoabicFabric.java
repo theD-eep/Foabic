@@ -9,7 +9,9 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Fabric entrypoint.
@@ -31,15 +33,26 @@ public final class FoabicFabric implements ModInitializer {
                 ? Environment.CLIENT
                 : Environment.SERVER;
 
+        Map<String, String> provided = new HashMap<>();
+        loader.getAllMods().forEach(mod -> provided.put(
+                mod.getMetadata().getId(),
+                mod.getMetadata().getVersion().getFriendlyString()));
+
         FabricRegistries.bind();
         FoabicLoader.load(gameDirectory,
-                List.of(gameDirectory.resolve("foabic-mods")),
-                environment, PLATFORM);
+                // Preferred: foabic-mods. Also accept mods/ as a convenience
+                // for users who drop Foabic jars next to Fabric mods; Fabric
+                // ignores them as non-Fabric mods, while Foabic reads foabic.mod.
+                List.of(gameDirectory.resolve("foabic-mods"), gameDirectory.resolve("mods")),
+                environment, PLATFORM, provided);
 
-        // ServerLifecycleEvents also covers an integrated server on a client.
-        // The use-block bridge filters to the logical server, so there is no
-        // double dispatch.
+        // Signal bridges and creative-tab callbacks are registered after the
+        // loader has resolved every Foabic mod. The generated resource pack is
+        // registered before Fabric's first resource reload.
         FabricSignals.register();
+        FabricCreativeTabs.register();
+        FabricGeneratedResources.register(environment);
+
         LOG.log(System.Logger.Level.INFO,
                 "Foabic {0} attached to Fabric ({1}) with {2} Foabic mod(s)",
                 Foabic.VERSION, environment, Foabic.mods().size());

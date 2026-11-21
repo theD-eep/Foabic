@@ -5,11 +5,11 @@ issueTrackerURL="https://github.com/theD-eep/Foabic/issues"
 
 [[mods]]
 modId="foabic"
-version="1.0.0"
+version="1.1.0"
 displayName="Foabic"
 authors="Foabic contributors"
 description='''
-A small platform-neutral mod API for Minecraft 26.3. NeoForge adapter.
+Foabic 1.1: a small platform-neutral mod API for Minecraft 26.3. NeoForge adapter.
 '''
 
 [[dependencies.foabic]]

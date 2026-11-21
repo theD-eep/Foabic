@@ -1,0 +1,9 @@
+id=foabic_test
+name=Foabic Minimal Test
+version=1.1.0
+entrypoint=example.MinimalMod
+environment=*
+api=^1.1.0
+texture=foabic_test:block/test_block
+description=Registers a block, block item, block entity and sound; observes the start, tick, interact and break signals.
+authors=Foabic contributors

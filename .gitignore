@@ -3,6 +3,7 @@ run/
 client-run/
 screenshots/
 *.log
+logs/
 .idea/
 .vscode/
 *.iml

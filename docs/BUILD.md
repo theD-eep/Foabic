@@ -1,6 +1,6 @@
 # Build
 
-Foabic 1.0 uses a **Gradle 9.5.1** wrapper. There is no project-local `.cmd` or `.ps1` build entry point.
+Foabic 1.1 uses a **Gradle 9.5.1** wrapper. There is no project-local `.cmd` or `.ps1` build entry point. `gradlew.bat` / `gradlew` are the standard Gradle wrapper.
 
 ## Requirements
 
@@ -24,32 +24,34 @@ export JAVA_HOME=/path/to/jdk-25
 ./gradlew build
 ```
 
-This compiles all modules, runs the core tests, packages four jars and copies them to `dist/`.
+This compiles all modules, runs the core tests, packages five jars and copies them to `dist/`.
 
 ## Tasks
 
 | Task | Purpose |
 | --- | --- |
 | `build` | Full build, tests and `dist` |
-| `dist` | Copy the four release jars into `dist/` and write `dist/SHA256SUMS` |
-| `coreTest` | Run the platform-neutral event/version/signal tests |
+| `dist` | Copy the five release jars into `dist/` and write `dist/SHA256SUMS` |
+| `coreTest` | Run event/version/signal, defensive-loader and resource-generation tests |
 | `:api:jar` | Compile-time API only |
 | `:fabric:jar` | Fabric adapter, including API and loader classes |
 | `:neoforge:jar` | NeoForge adapter, including API and loader classes |
-| `:example:jar` | Platform-neutral acceptance mod |
+| `:examples:minimal:jar` | v1.1 acceptance mod |
+| `:examples:chat:jar` | Chat reply example |
 | `clean` | Delete Gradle outputs and `dist/` |
 
 ## Projects
 
 ```text
 :api        Java library, Minecraft content types on the compile classpath
-:loader     Java library, depends on :api
+:loader     Java library, depends on :api; compiles against Minecraft for loader tests
 :fabric     Fabric Loom adapter
 :neoforge   NeoForge adapter
-:example    acceptance mod
+:examples:minimal  acceptance mod
+:examples:chat     chat reply example
 ```
 
-Source directories are reused from the original layout:
+Source layout:
 
 ```text
 src/api/java
@@ -58,8 +60,10 @@ src/fabric/java
 src/fabric/resources
 src/neoforge/java
 src/neoforge/resources
-examples/minimal/src
-examples/minimal/resources
+examples/minimal/src/main/java
+examples/minimal/src/main/resources
+examples/chat/src/main/java
+examples/chat/src/main/resources
 src/test/java
 ```
 
@@ -67,7 +71,7 @@ src/test/java
 
 ### Fabric
 
-`:fabric` applies the non-remapping Loom plugin for Minecraft 26.1+:
+`:fabric` applies the non-remapping Loom plugin for Minecraft 26.3:
 
 ```kotlin
 plugins {
@@ -76,6 +80,8 @@ plugins {
 ```
 
 `minecraft("com.mojang:minecraft:26.3")` supplies the merged game jar. Because 26.3 is unobfuscated, there is no mappings dependency and no `modImplementation` configuration. Fabric Loader and Fabric API are normal `implementation` dependencies; the Fabric API POM brings its module jars onto the compile classpath.
+
+The adapter uses Fabric's `ResourceLoader.registerBuiltinPack` with a synthetic `ModContainer` rooted at `.foabic/generated-resources`. This is a public API, not a Mixin hook.
 
 ### NeoForge
 
@@ -87,6 +93,8 @@ compileOnly(neoForgeLibraries)
 ```
 
 This avoids NeoForm/NFRT downloads. In an environment with access to `maven.neoforged.net`, the same source set can be switched to `net.neoforged.moddev`; the adapter code and jar contents are independent of the build plugin.
+
+The adapter registers a fixed `PathPackResources` through `AddPackFindersEvent` for generated resources.
 
 ## Local input cache
 
@@ -104,5 +112,18 @@ The build reads these existing inputs:
 ```
 
 `.cache/` is ignored by git. It is a local build input, not part of the source release.
+
+## Tests
+
+`gradlew.bat coreTest` runs `dev.foabic.test.AllTests` on the platform-neutral test classpath. It covers:
+
+- event priority/close behavior and listener failure isolation;
+- version/range parsing;
+- legacy and v1.1 signal data classes;
+- duplicate-id discovery and malformed-metadata skipping;
+- missing Fabric API dependency diagnostics and provided-version resolution;
+- generated blockstate/model/texture copy and missing-texture fallback.
+
+The test classpath includes Minecraft and the loader because the public API types and defensive-loader fixtures reference Minecraft classes. No client is started.
 
 See [VERIFICATION.md](VERIFICATION.md) for the runtime evidence produced from the Gradle-built jars.

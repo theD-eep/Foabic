@@ -7,10 +7,10 @@ import java.util.Objects;
  * On a client this fires for an integrated server; it does not fire merely
  * because the client connected to a remote server.
  *
- * <p>This is the deterministic acceptance signal for Foabic 1.0: it does not
- * require a player, a world interaction, or a client, so the same minimal mod
- * can be started twice on Fabric and twice on NeoForge and produce the same
- * observable result.
+ * <p>This is the deterministic acceptance signal used by Foabic 1.0 and 1.1:
+ * it does not require a player, a world interaction, or a client, so the same
+ * minimal mod can be started twice on Fabric and twice on NeoForge and produce
+ * the same observable result.
  */
 public final class ServerStartedSignal {
 

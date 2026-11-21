@@ -10,7 +10,7 @@ plugins {
 
 allprojects {
     group = "dev.foabic"
-    version = "1.0.0"
+    version = "1.1.0"
 }
 
 subprojects {
@@ -67,15 +67,17 @@ tasks.named("check") {
     dependsOn(coreTest)
 }
 
-val apiJar = project(":api").layout.buildDirectory.file("libs/foabic-api-1.0.0.jar")
-val fabricJar = project(":fabric").layout.buildDirectory.file("libs/foabic-fabric-1.0.0.jar")
-val neoForgeJar = project(":neoforge").layout.buildDirectory.file("libs/foabic-neoforge-1.0.0.jar")
-val exampleJar = project(":example").layout.buildDirectory.file("libs/foabic-example-minimal-1.0.0.jar")
+val apiJar = project(":api").layout.buildDirectory.file("libs/foabic-api-1.1.0.jar")
+val fabricJar = project(":fabric").layout.buildDirectory.file("libs/foabic-fabric-1.1.0.jar")
+val neoForgeJar = project(":neoforge").layout.buildDirectory.file("libs/foabic-neoforge-1.1.0.jar")
+val exampleJar = project(":examples:minimal").layout.buildDirectory.file("libs/foabic-example-minimal-1.1.0.jar")
+val exampleChatJar = project(":examples:chat").layout.buildDirectory.file("libs/foabic-example-chat-1.1.0.jar")
 
 val dist by tasks.registering(Copy::class) {
     group = "build"
-    description = "Copies the four release jars into the root dist/ directory."
-    dependsOn(":api:jar", ":fabric:jar", ":neoforge:jar", ":example:jar")
+    description = "Copies the release jars and checksums into the root dist/ directory."
+    dependsOn(":api:jar", ":fabric:jar", ":neoforge:jar",
+        ":examples:minimal:jar", ":examples:chat:jar")
     doFirst {
         delete(layout.projectDirectory.dir("dist"))
     }
@@ -83,6 +85,7 @@ val dist by tasks.registering(Copy::class) {
     from(fabricJar)
     from(neoForgeJar)
     from(exampleJar)
+    from(exampleChatJar)
     into(layout.projectDirectory.dir("dist"))
     doLast {
         val output = layout.projectDirectory.dir("dist").asFile

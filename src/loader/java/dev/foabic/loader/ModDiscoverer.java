@@ -10,12 +10,23 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
+/**
+ * Tolerant mod-jar discovery.
+ *
+ * <p>A broken jar or malformed {@code foabic.mod} is reported and skipped; it
+ * must not take down the game. Duplicate ids are also skipped, with an ERROR
+ * line naming the id. Dependency failures are different: they are detected
+ * before any entrypoint class is loaded and reported as a clear
+ * {@link DependencyException} by {@link DependencyResolver}.
+ */
 final class ModDiscoverer {
 
     private ModDiscoverer() {
@@ -40,21 +51,34 @@ final class ModDiscoverer {
                         .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar"))
                         .sorted(Comparator.comparing(path -> path.getFileName().toString()))
                         .forEach(jars::add);
-            } catch (IOException e) {
-                throw new ModLoadException("cannot list mods directory " + modsDir, e);
+            } catch (IOException | RuntimeException e) {
+                log.log(System.Logger.Level.ERROR,
+                        "无法读取模组目录 {0}，已跳过: {1}", modsDir, e.getMessage());
             }
         }
 
         List<DiscoveredMod> result = new ArrayList<>();
-        Map<String, DiscoveredMod> byId = new HashMap<>();
+        Set<String> seenIds = new HashSet<>();
+        Map<String, Path> loadedFrom = new HashMap<>();
         for (Path jarPath : jars) {
-            DiscoveredMod discovered = read(jarPath, environment, log);
-            if (discovered == null) continue;
-            DiscoveredMod previous = byId.putIfAbsent(discovered.metadata().id(), discovered);
-            if (previous != null) {
-                throw new ModLoadException("duplicate mod id '" + discovered.metadata().id()
-                        + "' in " + previous.jar().getFileName() + " and " + jarPath.getFileName());
+            DiscoveredMod discovered;
+            try {
+                discovered = read(jarPath, environment, log);
+            } catch (RuntimeException e) {
+                log.log(System.Logger.Level.ERROR,
+                        "无法加载模组 {0}，已跳过: {1}", jarPath.getFileName(), e.getMessage());
+                continue;
             }
+            if (discovered == null) continue;
+
+            String id = discovered.metadata().id();
+            if (!seenIds.add(id)) {
+                log.log(System.Logger.Level.ERROR,
+                        "发现重复的 Mod ID: {0}，已跳过加载 ({1}); 已加载自 {2}",
+                        id, jarPath, loadedFrom.get(id));
+                continue;
+            }
+            loadedFrom.put(id, jarPath);
             result.add(discovered);
         }
         return result;

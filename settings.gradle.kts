@@ -7,4 +7,4 @@ pluginManagement {
 
 rootProject.name = "foabic"
 
-include("api", "loader", "fabric", "neoforge", "example")
+include("api", "loader", "fabric", "neoforge", "examples:minimal", "examples:chat")

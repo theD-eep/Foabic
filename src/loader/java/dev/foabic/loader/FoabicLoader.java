@@ -7,9 +7,11 @@ import dev.foabic.api.mod.Environment;
 import dev.foabic.api.mod.ModContainer;
 import dev.foabic.api.mod.ModInitializer;
 import dev.foabic.api.mod.ModMetadata;
+import dev.foabic.api.registry.FoabicCreativeTabs;
 import dev.foabic.loader.mod.ModClassLoader;
 import dev.foabic.loader.mod.ModContainerImpl;
 import dev.foabic.loader.mod.ModContextImpl;
+import dev.foabic.loader.resource.GeneratedResourcePack;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -20,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -40,10 +43,22 @@ public final class FoabicLoader {
 
     public static FoabicRuntime load(Path gameDirectory, List<Path> modsDirectories,
                                      Environment environment, String platform) {
+        return load(gameDirectory, modsDirectories, environment, platform, Map.of());
+    }
+
+    /**
+     * Loads Foabic mods with the platform-provided module versions used by the
+     * dependency preflight (for example {@code fabric-api} and
+     * {@code fabricloader}).
+     */
+    public static FoabicRuntime load(Path gameDirectory, List<Path> modsDirectories,
+                                     Environment environment, String platform,
+                                     Map<String, String> providedVersions) {
         Objects.requireNonNull(gameDirectory, "gameDirectory");
         Objects.requireNonNull(modsDirectories, "modsDirectories");
         Objects.requireNonNull(environment, "environment");
         Objects.requireNonNull(platform, "platform");
+        Objects.requireNonNull(providedVersions, "providedVersions");
         if (environment == Environment.UNIVERSAL) {
             throw new ModLoadException("loader environment must be CLIENT or SERVER");
         }
@@ -70,7 +85,14 @@ public final class FoabicLoader {
         LOG.log(System.Logger.Level.INFO,
                 "Foabic {0} starting on {1}/{2}", Foabic.VERSION, platform, environment);
         List<DiscoveredMod> discovered = ModDiscoverer.discover(modsDirs, environment, LOG);
-        List<DiscoveredMod> ordered = new DependencyResolver(discovered, LOG).resolve();
+        List<DiscoveredMod> ordered;
+        try {
+            ordered = new DependencyResolver(discovered, providedVersions, platform, LOG).resolve();
+        } catch (DependencyException e) {
+            LOG.log(System.Logger.Level.ERROR,
+                    "Foabic 依赖检查失败，启动中止: {0}", e.getMessage());
+            throw e;
+        }
 
         URL[] urls = new URL[ordered.size()];
         try {
@@ -98,10 +120,13 @@ public final class FoabicLoader {
         LoaderRuntime runtime = new LoaderRuntime(platform, environment, gameDir, publicContainers);
         FoabicInternal.install(runtime);
 
+        List<ModContextImpl> contexts = new ArrayList<>(containers.size());
         try {
             for (ModContainerImpl container : containers) {
-                initialize(container, runtime);
+                contexts.add(initialize(container, runtime));
             }
+            GeneratedResourcePack.generate(stateRoot, contexts, LOG);
+            FoabicCreativeTabs.freeze();
         } catch (Throwable failure) {
             FoabicInternal.uninstall(runtime);
             try {
@@ -120,7 +145,7 @@ public final class FoabicLoader {
         return runtime;
     }
 
-    private static void initialize(ModContainerImpl container, FoabicRuntime runtime) {
+    private static ModContextImpl initialize(ModContainerImpl container, FoabicRuntime runtime) {
         ModMetadata metadata = container.metadata();
         ModContextImpl context = new ModContextImpl(runtime, container);
         LOG.log(System.Logger.Level.INFO, "initializing {0} {1}",
@@ -145,17 +170,32 @@ public final class FoabicLoader {
                 initializer.onInitialize(context);
             } catch (InvocationTargetException e) {
                 Throwable cause = e.getCause() == null ? e : e.getCause();
+                if (cause instanceof NoClassDefFoundError error) {
+                    throw new ModLoadException(missingClassMessage(metadata, entrypoint, error), cause);
+                }
                 throw new ModLoadException("mod '" + metadata.id() + "' entrypoint '"
                         + entrypoint + "' threw during initialization", cause);
             } catch (ModLoadException e) {
                 throw e;
+            } catch (NoClassDefFoundError e) {
+                throw new ModLoadException(missingClassMessage(metadata, entrypoint, e), e);
             } catch (ReflectiveOperationException | LinkageError e) {
                 throw new ModLoadException("cannot initialize mod '" + metadata.id()
-                        + "' entrypoint '" + entrypoint + "'", e);
+                        + "' entrypoint '" + entrypoint + "': " + e, e);
             } catch (Throwable e) {
                 throw new ModLoadException("mod '" + metadata.id() + "' entrypoint '"
                         + entrypoint + "' failed", e);
             }
         }
+        return context;
+    }
+
+    private static String missingClassMessage(ModMetadata metadata, String entrypoint,
+                                              NoClassDefFoundError error) {
+        String missing = error.getMessage() == null ? "<unknown>" : error.getMessage();
+        return "mod '" + metadata.id() + "' entrypoint '" + entrypoint
+                + "' is missing class " + missing.replace('/', '.')
+                + ". Declare the mod that owns this class in foabic.mod (depends=id@range) "
+                + "and install it; this is a dependency problem, not a Foabic crash.";
     }
 }

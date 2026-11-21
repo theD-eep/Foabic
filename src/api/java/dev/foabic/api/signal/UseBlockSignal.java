@@ -9,10 +9,11 @@ import java.util.Objects;
  * A player right-clicks a block. Listeners may change {@link #result()} to
  * consume the interaction or report success.
  *
- * <p>This is a plain data signal: it deliberately holds no live Minecraft
- * objects. Fabric and NeoForge adapters translate their native interaction
- * result into {@link Result} and back.
+ * @deprecated since 1.1.0; use {@link PlayerInteractBlockSignal}. The adapters
+ *         still deliver this legacy signal when a listener is registered, but
+ *         new mods should target the new class.
  */
+@Deprecated(since = "1.1.0", forRemoval = false)
 public final class UseBlockSignal {
 
     public enum Hand {

@@ -6,10 +6,11 @@ body:
   - type: markdown
     attributes:
       value: |
-        Foabic 1.0 is intentionally narrow. Read [docs/ROADMAP.md](../blob/main/docs/ROADMAP.md) first.
+        Foabic 1.1 is intentionally narrow. Read [docs/ROADMAP.md](../blob/main/docs/ROADMAP.md) first.
 
-        Mixin, a Gradle/Maven build plugin and universal packaging are planned for **v1.1**, not v1.0.
-        Networking, GUI, data generation and a full signal library are later.
+        Mixin, a Gradle/Maven build plugin, universal packaging and a full signal library are
+        deferred beyond 1.1. Networking, GUI and rendering-layer integration are later.
+        Resource/model generation stays data-only.
 
   - type: textarea
     id: problem

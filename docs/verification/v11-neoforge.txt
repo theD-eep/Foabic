@@ -1,0 +1,102 @@
+Foabic 1.1.0 verification — NeoForge
+==================================
+
+Environment
+-----------
+Date: 2026-11-21
+OS: Windows 11
+Java: Eclipse Temurin 25.0.5.1+2
+Minecraft: 26.3
+NeoForge: 26.3.0.115
+Foabic: 1.1.0
+
+Build
+-----
+Command:
+  gradlew.bat build
+
+Core tests:
+  PASS events
+  PASS failure isolation
+  PASS versions
+  PASS legacy use-block signal
+  PASS player-interact-block signal
+  PASS player-break-block signal
+  PASS server-tick signal
+  PASS loader defenses
+  ALL TESTS PASSED (8)
+
+Artifacts:
+  foabic-fabric-1.1.0.jar          108,206 bytes
+  foabic-neoforge-1.1.0.jar        108,724 bytes
+  foabic-api-1.1.0.jar              50,087 bytes
+  foabic-example-minimal-1.1.0.jar   7,568 bytes
+  foabic-example-chat-1.1.0.jar      2,707 bytes
+
+Runtime
+-------
+Jars used:
+  mods/foabic-neoforge-1.1.0.jar
+  foabic-mods/foabic-example-minimal-1.1.0.jar
+
+Run 1:
+  FOABIC_REGISTER platform=neoforge block=foabic_test:test_block item=foabic_test:test_block
+  FOABIC_V11_REGISTER platform=neoforge block_entity=foabic_test:test_block_entity sound=foabic_test:test_sound
+  FOABIC_READY platform=neoforge sound=foabic_test:test_sound
+  FOABIC_RESOURCES files=5 textures=1 root=...\.foabic\generated-resources
+  FOABIC_SIGNAL name=server_started platform=neoforge mc=26.3 mods=1
+  FOABIC_STATUS platform=neoforge block_registered=true item_registered=true block_entity_registered=true sound_registered=true
+  FOABIC_TICK platform=neoforge tick=20 players=0
+
+Run 2:
+  FOABIC_REGISTER platform=neoforge block=foabic_test:test_block item=foabic_test:test_block
+  FOABIC_V11_REGISTER platform=neoforge block_entity=foabic_test:test_block_entity sound=foabic_test:test_sound
+  FOABIC_READY platform=neoforge sound=foabic_test:test_sound
+  FOABIC_RESOURCES files=5 textures=1 root=...\.foabic\generated-resources
+  FOABIC_SIGNAL name=server_started platform=neoforge mc=26.3 mods=1
+  FOABIC_STATUS platform=neoforge block_registered=true item_registered=true block_entity_registered=true sound_registered=true
+  FOABIC_TICK platform=neoforge tick=20 players=0
+
+The two runs produced identical Foabic lines.
+
+Generated resource pack
+-----------------------
+The NeoForge server generated the same five files as the Fabric run:
+  pack.mcmeta                                                      94 bytes
+  assets/foabic_test/blockstates/test_block.json                   59 bytes
+  assets/foabic_test/models/block/test_block.json                  88 bytes
+  assets/foabic_test/models/item/test_block.json                   42 bytes
+  assets/foabic_test/textures/block/test_block.png                127 bytes
+
+The copied texture SHA-256 is the same as the source PNG:
+  03D7595C5B72EB37E95729202706AFB6B8C6367E0356290BCA9372023A82B1B0
+
+Fake-player bridge harness
+--------------------------
+A temporary NeoForge-only self-test mod (not shipped) placed the block and
+posted the real NeoForge events:
+
+  SELFTEST_BLOCK_ENTITY=example.MinimalMod$TestBlockEntity
+  SELFTEST_INTERACT canceled=true result=Success[swingSource=PREDICTED, itemContext=...]
+  SELFTEST_BREAK canceled=false
+
+The Foabic example observed the corresponding signals:
+
+  FOABIC_INTERACT player=[Minecraft] block=foabic_test:test_block pos=0,100,0 hand=MAIN_HAND
+  FOABIC_BREAK player=[Minecraft] block=foabic_test:test_block pos=0,100,0
+  FOABIC_TICK platform=neoforge tick=20 players=0
+
+The canceled=true interact event is the expected NeoForge mapping for
+PlayerInteractBlockSignal.Result.SUCCESS. The break signal did not cancel, so
+the event remained uncanceled.
+
+Limits
+------
+This is a dedicated-server test. No client was launched, so the rendered
+models/textures were not visually inspected. The generated pack files and
+namespace discovery were verified; the client resource-reload path was not
+executed. See docs/VERIFICATION.md.
+
+The NeoForge runtime emits its usual Netty epoll/kqueue Windows environment
+warnings. They are runtime noise, not Foabic load failures; the server reached
+Done and all Foabic assertions passed.

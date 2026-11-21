@@ -1,6 +1,10 @@
 package dev.foabic.api.registry;
 
 import dev.foabic.api.util.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 
 import java.util.List;
 import java.util.Map;
@@ -13,21 +17,23 @@ import java.util.stream.Stream;
 /**
  * Platform-neutral registry views.
  *
- * <p>Mods use the same {@link #BLOCKS} and {@link #ITEMS} constants on Fabric
- * and NeoForge. The active adapter binds the concrete platform view before any
- * Foabic mod is initialized, so loading a mod never requires a platform-specific
- * import.
+ * <p>Mods use the same constants on Fabric and NeoForge. The active adapter
+ * binds the concrete platform view before any Foabic mod is initialized, so
+ * loading a mod never requires a platform-specific import.
  *
- * <p>Only blocks and items are part of the 1.0 acceptance surface.
+ * <p>The v1.1 surface contains blocks, items, block-entity types and sound
+ * events. Only these four are supported; arbitrary platform registries are not
+ * part of the stable API.
  */
 public final class FoabicRegistries {
 
     private static final Map<String, Registry<?>> REGISTRIES = new ConcurrentHashMap<>();
 
-    public static final Registry<net.minecraft.world.level.block.Block> BLOCKS =
-            new Proxy<>("blocks");
-    public static final Registry<net.minecraft.world.item.Item> ITEMS =
-            new Proxy<>("items");
+    public static final Registry<Block> BLOCKS = new Proxy<>("blocks");
+    public static final Registry<Item> ITEMS = new Proxy<>("items");
+    public static final Registry<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
+            new Proxy<>("block_entity_types");
+    public static final Registry<SoundEvent> SOUND_EVENTS = new Proxy<>("sound_events");
 
     private FoabicRegistries() {
     }

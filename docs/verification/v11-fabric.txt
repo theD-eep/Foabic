@@ -1,0 +1,130 @@
+Foabic 1.1.0 verification — Fabric
+=================================
+
+Environment
+-----------
+Date: 2026-11-21
+OS: Windows 11
+Java: Eclipse Temurin 25.0.5.1+2
+Minecraft: 26.3
+Fabric Loader: 0.20.1
+Fabric API: 0.166.2+26.3
+Foabic: 1.1.0
+
+Build
+-----
+Command:
+  gradlew.bat build
+
+Core tests:
+  PASS events
+  PASS failure isolation
+  PASS versions
+  PASS legacy use-block signal
+  PASS player-interact-block signal
+  PASS player-break-block signal
+  PASS server-tick signal
+  PASS loader defenses
+  ALL TESTS PASSED (8)
+
+Artifacts:
+  foabic-fabric-1.1.0.jar          108,206 bytes
+  foabic-neoforge-1.1.0.jar        108,724 bytes
+  foabic-api-1.1.0.jar              50,087 bytes
+  foabic-example-minimal-1.1.0.jar   7,568 bytes
+  foabic-example-chat-1.1.0.jar      2,707 bytes
+
+Runtime
+-------
+Jars used:
+  mods/fabric-api-0.166.2+26.3.jar
+  mods/foabic-fabric-1.1.0.jar
+  foabic-mods/foabic-example-minimal-1.1.0.jar
+
+Run 1:
+  FOABIC_REGISTER platform=fabric block=foabic_test:test_block item=foabic_test:test_block
+  FOABIC_V11_REGISTER platform=fabric block_entity=foabic_test:test_block_entity sound=foabic_test:test_sound
+  FOABIC_READY platform=fabric sound=foabic_test:test_sound
+  FOABIC_RESOURCES files=5 textures=1 root=...\.foabic\generated-resources
+  FOABIC_SIGNAL name=server_started platform=fabric mc=26.3 mods=1
+  FOABIC_STATUS platform=fabric block_registered=true item_registered=true block_entity_registered=true sound_registered=true
+  FOABIC_TICK platform=fabric tick=20 players=0
+
+Run 2:
+  FOABIC_REGISTER platform=fabric block=foabic_test:test_block item=foabic_test:test_block
+  FOABIC_V11_REGISTER platform=fabric block_entity=foabic_test:test_block_entity sound=foabic_test:test_sound
+  FOABIC_READY platform=fabric sound=foabic_test:test_sound
+  FOABIC_RESOURCES files=5 textures=1 root=...\.foabic\generated-resources
+  FOABIC_SIGNAL name=server_started platform=fabric mc=26.3 mods=1
+  FOABIC_STATUS platform=fabric block_registered=true item_registered=true block_entity_registered=true sound_registered=true
+  FOABIC_TICK platform=fabric tick=20 players=0
+
+The two runs produced identical Foabic lines.
+
+Generated resource pack
+-----------------------
+  pack.mcmeta                                                      94 bytes
+  assets/foabic_test/blockstates/test_block.json                   59 bytes
+  assets/foabic_test/models/block/test_block.json                  88 bytes
+  assets/foabic_test/models/item/test_block.json                   42 bytes
+  assets/foabic_test/textures/block/test_block.png                127 bytes
+
+Blockstate:
+  {"variants":{"":{"model":"foabic_test:block/test_block"}}}
+
+Block model:
+  {"parent":"minecraft:block/cube_all","textures":{"all":"foabic_test:block/test_block"}}
+
+Item model:
+  {"parent":"foabic_test:block/test_block"}
+
+The copied texture SHA-256 equals the PNG in the example jar:
+  03D7595C5B72EB37E95729202706AFB6B8C6367E0356290BCA9372023A82B1B0
+
+Fake-player bridge harness
+--------------------------
+A temporary Fabric-only self-test mod (not shipped) placed the Foabic test block
+with a FakePlayer and invoked the real Fabric callbacks:
+
+  SELFTEST_BLOCK_ENTITY=example.MinimalMod$TestBlockEntity
+  SELFTEST_INTERACT=Success[swingSource=PREDICTED, itemContext=...]
+  SELFTEST_BREAK_ALLOWED=true
+
+The Foabic example observed the corresponding signals:
+
+  FOABIC_INTERACT player=[Minecraft] block=foabic_test:test_block pos=0,100,0 hand=MAIN_HAND
+  FOABIC_BREAK player=[Minecraft] block=foabic_test:test_block pos=0,100,0
+  FOABIC_TICK platform=fabric tick=20 players=0
+
+This proves block-entity creation and both new player signals through the real
+Fabric event path, not just registration.
+
+Duplicate-ID runtime test
+--------------------------
+A byte-identical copy of the example jar was added under a second file name.
+The server continued to start and loaded exactly one copy:
+
+  严重: 发现重复的 Mod ID: foabic_test，已跳过加载 (...\zzz-duplicate.jar); 已加载自 ...\foabic-example-minimal-1.1.0.jar
+  信息: Foabic loaded 1 mod(s) in 72 ms on fabric
+  信息: FOABIC_STATUS platform=fabric block_registered=true item_registered=true block_entity_registered=true sound_registered=true
+
+No exception was thrown and the duplicate was skipped.
+
+Dependency-error runtime test
+-----------------------------
+A temporary Foabic mod declared:
+  depends=fabric-api@>=99.0.0
+
+The installed Fabric API was 0.166.2+26.3. The loader stopped before loading
+the mod entrypoint with this single clear line:
+
+  严重: Foabic 依赖检查失败，启动中止: mod 'needs_new_fabric' requires 'fabric-api' >=99.0.0, but Fabric API provides 0.166.2. Install a matching version.
+
+No NoClassDefFoundError was raised.
+
+Limits
+------
+This is a dedicated-server test. No client was launched, so the rendered
+models/textures were not visually inspected. The generated pack files and
+namespace discovery were verified; the client resource-reload path was not
+executed. See docs/VERIFICATION.md.

@@ -1,49 +1,52 @@
 # Roadmap
 
-## 1.0 — current
+## 1.1 — current
 
-Shipped and verified:
+Shipped and verified on Minecraft 26.3:
 
-- Minecraft 26.3, Java 25
-- Fabric Loader 0.20.1 / Fabric API 0.166.2+26.3 adapter
-- NeoForge 26.3.0.115 adapter
-- platform-neutral `FoabicRegistries.BLOCKS` / `ITEMS`
-- factory-based `submit` with `Registration<T>`
-- synchronous signal bus
-- `ServerStartedSignal`
-- `UseBlockSignal` with Fabric and NeoForge bridges
-- minimal example that starts on both platforms, registers a block + item, receives a signal, and repeats identically
-- Gradle 9.5.1 wrapper build with repeatability verification
+- defensive discovery: duplicate ids, broken metadata and unreadable jars are logged and skipped;
+- dependency preflight with actionable errors for missing/incompatible `fabric-api` and `foabic-api`, including a specific Fabric-only diagnostic on NeoForge;
+- platform-neutral `BLOCKS`, `ITEMS`, `BLOCK_ENTITY_TYPES` and `SOUND_EVENTS`;
+- `BlockItem` linkage through `submitBlock`, including creative-tab insertion;
+- block-entity binding through `submitBlockEntity`;
+- `SoundEvent` registration;
+- `PlayerInteractBlockSignal` (Fabric `UseBlockCallback`, NeoForge `RightClickBlock`);
+- `PlayerBreakBlockSignal` (Fabric `PlayerBlockBreakEvents.BEFORE`, NeoForge `BreakBlockEvent`);
+- `ServerTickSignal` (Fabric `END_SERVER_TICK`, NeoForge `ServerTickEvent.Post`);
+- generated blockstate/block model/item model plus texture copy from `texture=` metadata or `context.resources()`;
+- always-on generated resource packs on both adapters;
+- Fabric and NeoForge dedicated-server verification, twice per platform, plus fake-player signal tests.
 
-The definition of "stable" for 1.0 is intentionally narrow: one minimal mod, both platforms, one object, one signal, repeatable output. Everything below is deliberately outside that contract.
+The v1.0 `UseBlockSignal` remains as a deprecated compatibility path.
 
-## 1.1 — next
+## 1.2 — not committed
 
-- Mixin support, including a documented `foabic.mixins.json` / adapter integration path
-- a Gradle build plugin for Foabic mod authors
-- universal/cross-platform packaging (one artifact that selects an adapter at runtime, or an equivalent documented distribution)
-- compatibility test matrix for at least one patch release in the 26.3 line
+Candidates, in no promised order:
 
-These are the next foundation layers. They should not be added to 1.0.
+- a larger signal library (player join/leave, block place, entity events, server stopping);
+- a small command and scheduling API that does not require live `MinecraftServer` objects in signals;
+- broader block-entity helpers (ticker binding, menu providers);
+- a compatibility matrix for another 26.3 patch release;
+- data-pack resource helpers alongside the client resource pack.
 
 ## Later
 
-- a real signal standard library (more than the two concrete signals)
-- networking
-- GUI/screen APIs
-- block/item model and creative-tab helpers
-- data generation
-- 26.4+ compatibility
-- binary compatibility commitments across 1.x
+- universal/cross-platform packaging;
+- networking;
+- GUI/screen API;
+- a Gradle plugin for Foabic mod authors (explicitly not before 1.3);
+- 26.4+ compatibility;
+- binary compatibility commitments across 1.x.
 
-## Non-goals
+## Non-goals for 1.1
 
-- replacing Fabric Loader, Fabric API or NeoForge
-- sandboxing mods
-- a cross-loader mod format independent of Forge/Fabric metadata
-- a large annotation/reflection framework
-- bundling Minecraft, Fabric API or NeoForge
+- **Mixin.** No Mixin dependency, annotation processor or configuration.
+- **A build plugin.** The adapters are configured manually in two modules.
+- **Rendering-layer integration.** No Sodium/OpenGL code; the resource work is data generation only.
+- replacing Fabric Loader, Fabric API or NeoForge;
+- sandboxing mods;
+- bundling Minecraft, Fabric API or NeoForge.
 
 ## Scope rule
 
-Do not add a deferred subsystem to a release line before the lower-level acceptance path is verified on every supported platform. v1.0 exists to make v1.1 debuggable, not to look complete.
+Do not add a deferred subsystem to a release line before the lower-level acceptance path is verified on every supported platform. v1.1 exists to make the next layer debuggable, not to look complete.

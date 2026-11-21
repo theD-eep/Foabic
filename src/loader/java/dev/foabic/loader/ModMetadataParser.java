@@ -3,6 +3,7 @@ package dev.foabic.loader;
 import dev.foabic.api.mod.Dependency;
 import dev.foabic.api.mod.Environment;
 import dev.foabic.api.mod.ModMetadata;
+import dev.foabic.api.util.ResourceLocation;
 import dev.foabic.api.version.Version;
 import dev.foabic.api.version.VersionRange;
 
@@ -29,8 +30,10 @@ final class ModMetadataParser {
             throw new ModLoadException(source + ": foabic.mod is larger than 64 KiB");
         }
         Properties properties = new Properties();
+        int offset = hasUtf8Bom(bytes) ? 3 : 0;
         try (Reader reader = new InputStreamReader(
-                new ByteArrayInputStream(bytes), StandardCharsets.UTF_8)) {
+                new ByteArrayInputStream(bytes, offset, bytes.length - offset),
+                StandardCharsets.UTF_8)) {
             properties.load(reader);
         } catch (IOException | IllegalArgumentException e) {
             throw new ModLoadException(source + ": cannot parse foabic.mod", e);
@@ -72,9 +75,19 @@ final class ModMetadataParser {
         List<Dependency> optional = dependencies(properties.getProperty("optional", ""), source);
         List<String> authors = splitList(properties.getProperty("authors", "").replace(';', ','));
 
+        String texture = properties.getProperty("texture", "").trim();
+        if (!texture.isEmpty()) {
+            try {
+                if (!texture.contains(":")) texture = id + ":" + texture;
+                texture = ResourceLocation.parse(texture).toString();
+            } catch (IllegalArgumentException e) {
+                throw new ModLoadException(source + ": invalid texture id '" + texture + "'", e);
+            }
+        }
+
         return new ModMetadata(id, name, version,
                 properties.getProperty("description", "").trim(), authors, entrypoints,
-                dependencies, optional, environment, apiRange);
+                dependencies, optional, environment, apiRange, texture);
     }
 
     private static List<Dependency> dependencies(String value, String source) {
@@ -118,5 +131,12 @@ final class ModMetadataParser {
             if (!trimmed.isEmpty()) result.add(trimmed);
         }
         return result;
+    }
+
+    private static boolean hasUtf8Bom(byte[] bytes) {
+        return bytes.length >= 3
+                && (bytes[0] & 0xff) == 0xef
+                && (bytes[1] & 0xff) == 0xbb
+                && (bytes[2] & 0xff) == 0xbf;
     }
 }

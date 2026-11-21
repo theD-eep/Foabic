@@ -21,7 +21,7 @@ The build is Gradle. `:fabric` uses the non-remapping `net.fabricmc.fabric-loom`
 gradlew.bat build
 ```
 
-The build compiles the API, loader, Fabric adapter, NeoForge adapter and minimal example, packages four jars, runs `:coreTest`, and copies the artifacts to `dist/`. See [docs/BUILD.md](docs/BUILD.md) for the `.cache` input layout.
+The build compiles the API, loader, Fabric adapter, NeoForge adapter and examples, packages five jars, runs `:coreTest`, and copies the artifacts to `dist/`. See [docs/BUILD.md](docs/BUILD.md) for the `.cache` input layout.
 
 Expected test tail:
 
@@ -29,42 +29,50 @@ Expected test tail:
 PASS events
 PASS failure isolation
 PASS versions
-PASS use-block signal
-ALL TESTS PASSED (4)
+PASS legacy use-block signal
+PASS player-interact-block signal
+PASS player-break-block signal
+PASS server-tick signal
+PASS loader defenses
+ALL TESTS PASSED (8)
 ```
 
-Use `gradlew.bat assemble` to build without running the tests. Artifacts land in `dist/`:
+Artifacts in `dist/`:
 
 ```text
-foabic-api-1.0.0.jar                  compile-time API
-foabic-fabric-1.0.0.jar               Fabric adapter + API + loader
-foabic-neoforge-1.0.0.jar             NeoForge adapter + API + loader
-foabic-example-minimal-1.0.0.jar      common acceptance mod
+foabic-api-1.1.0.jar                  compile-time API
+foabic-fabric-1.1.0.jar               Fabric adapter + API + loader
+foabic-neoforge-1.1.0.jar             NeoForge adapter + API + loader
+foabic-example-minimal-1.1.0.jar      common acceptance mod
+foabic-example-chat-1.1.0.jar         chat reply example
 ```
 
 The Gradle build reads local `.cache/` inputs and does not download game files itself.
 
-For adapter changes, install the Gradle-built jars into the prepared Fabric and NeoForge runtimes and start each dedicated server twice. The exact expected observations are in [docs/VERIFICATION.md](docs/VERIFICATION.md).
+For adapter changes, install the Gradle-built jars into the prepared Fabric and NeoForge runtimes and start each dedicated server twice. The exact expected observations are in [docs/VERIFICATION.md](docs/VERIFICATION.md). Changes to signals or block entities should also be exercised with a fake-player harness on both platforms.
 
 ## Scope rules
 
-v1.0 accepts:
+v1.1 accepts:
 
-- fixes to either adapter, registry factory registration, `submit`, `connect` and the two v1.0 signals;
-- loader, dependency resolution and event-bus fixes;
-- documentation, tests and the minimal example.
+- fixes to either adapter, the four registry views, `submit`, `submitBlock`, `submitBlockEntity`, `connect`, the five current signals and the legacy `UseBlockSignal` compatibility path;
+- loader discovery, dependency preflight and event-bus fixes;
+- generated resource/creative-tab fixes that do not require Mixin or a rendering hook;
+- documentation, tests and the acceptance example.
 
-Do **not** add, on the 1.0 branch: Mixin, a Gradle/Maven build plugin, universal packaging, a full signal library, networking, GUI APIs or model/creative-tab generation. Mixin and the build plugin are explicitly v1.1 work — see [docs/ROADMAP.md](docs/ROADMAP.md).
+Do **not** add on the 1.1 line: Mixin, a Gradle/Maven build plugin, universal packaging, a full signal library, networking, GUI APIs or rendering-layer code. Those are explicitly deferred; see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 Architecture rules:
 
-- `src/api` may reference Minecraft **content types** used by the public API (`Block`, `Item`), but must not import Fabric or NeoForge loader classes.
+- `src/api` may reference Minecraft **content types** used by the public API (`Block`, `Item`, `BlockEntityType`, `SoundEvent`) but must not import Fabric or NeoForge loader classes.
+- `src/loader` may compile against Minecraft for API signatures and defensive tests, but the loader runtime must not import Fabric or NeoForge classes.
 - Platform-specific code belongs in `src/fabric` or `src/neoforge`.
 - A registration factory must not be evaluated during NeoForge mod construction; it must run in `RegisterEvent`.
+- Resource generation must stay data-only. Do not parse complex model JSON and do not touch a renderer.
 
 ## Style
 
-- 4 spaces, UTF-8, no BOM.
+- 4 spaces, UTF-8, no BOM (the metadata parser tolerates a BOM, but do not add one).
 - No third-party runtime dependency beyond the JDK and the platform loader/API the user installs.
 - No classpath scanning or annotation reflection; the loader only reads `foabic.mod`.
 - Keep the public API small. If a new public type is not needed by the example or a test, do not add it.
@@ -74,13 +82,14 @@ Architecture rules:
 
 The version appears in these places and must match:
 
-1. `build.gradle.kts` → root `version`
-2. `src/api/java/dev/foabic/api/Foabic.java` → `VERSION`
-3. `src/fabric/resources/fabric.mod.json` → `"version"`
-4. `src/neoforge/resources/META-INF/neoforge.mods.toml` → `version`
-5. `CHANGELOG.md` → the section heading
+1. `build.gradle.kts` — root `version`
+2. `src/api/java/dev/foabic/api/Foabic.java` — `VERSION`
+3. `src/fabric/resources/fabric.mod.json` — `"version"`
+4. `src/neoforge/resources/META-INF/neoforge.mods.toml` — `version`
+5. `examples/*/src/main/resources/foabic.mod` — `version` and `api`
+6. `CHANGELOG.md` — the section heading
 
-Tags use a `v` prefix, for example `v1.0.0`.
+Tags use a `v` prefix, for example `v1.1.0`.
 
 ## Commits and pull requests
 

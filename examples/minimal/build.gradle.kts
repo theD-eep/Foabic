@@ -17,13 +17,6 @@ base {
     archivesName.set("foabic-example-minimal")
 }
 
-sourceSets {
-    main {
-        java.setSrcDirs(listOf(rootProject.file("examples/minimal/src")))
-        resources.setSrcDirs(listOf(rootProject.file("examples/minimal/resources")))
-    }
-}
-
 tasks.named<Jar>("jar") {
     from(rootProject.file("LICENSE"))
 }

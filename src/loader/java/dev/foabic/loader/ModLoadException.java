@@ -1,6 +1,6 @@
 package dev.foabic.loader;
 
-public final class ModLoadException extends FoabicException {
+public class ModLoadException extends FoabicException {
 
     private static final long serialVersionUID = 1L;
 

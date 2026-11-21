@@ -19,20 +19,20 @@ import java.util.Optional;
  * {@link dev.foabic.api.registry.FoabicRegistries}, and subscribes to signals
  * through {@link dev.foabic.api.mod.ModContext#connect(Class, java.util.function.Consumer)}.
  *
- * <p>Version 1.0 targets Minecraft 26.3 and ships two adapters: Fabric and
+ * <p>Version 1.1 targets Minecraft 26.3 and ships two adapters: Fabric and
  * NeoForge. The two platform jars are separate artifacts. There is no
- * universal/merged jar in 1.0.
+ * universal/merged jar in 1.1.
  */
 public final class Foabic {
 
     /** Foabic API/runtime version. */
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "1.1.0";
 
-    /** The only Minecraft version supported by Foabic 1.0. */
+    /** The only Minecraft version supported by Foabic 1.1. */
     public static final String MINECRAFT = "26.3";
 
     /** Version of the public API surface, for mod metadata checks. */
-    public static final int API_VERSION = 1;
+    public static final int API_VERSION = 2;
 
     private Foabic() {
     }

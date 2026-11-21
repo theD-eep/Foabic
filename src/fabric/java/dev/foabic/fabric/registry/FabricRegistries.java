@@ -10,7 +10,13 @@ public final class FabricRegistries {
     }
 
     public static void bind() {
-        FoabicRegistries.bind("blocks", new FabricRegistry<>(BuiltInRegistries.BLOCK));
-        FoabicRegistries.bind("items", new FabricRegistry<>(BuiltInRegistries.ITEM));
+        bind("blocks", BuiltInRegistries.BLOCK);
+        bind("items", BuiltInRegistries.ITEM);
+        bind("block_entity_types", BuiltInRegistries.BLOCK_ENTITY_TYPE);
+        bind("sound_events", BuiltInRegistries.SOUND_EVENT);
+    }
+
+    private static <T> void bind(String name, net.minecraft.core.Registry<T> registry) {
+        FoabicRegistries.bind(name, new FabricRegistry<>(registry));
     }
 }

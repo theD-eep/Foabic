@@ -1,5 +1,6 @@
 package dev.foabic.api.internal;
 
+import dev.foabic.api.registry.FoabicCreativeTabs;
 import dev.foabic.api.registry.FoabicRegistries;
 
 import java.util.Objects;
@@ -36,6 +37,7 @@ public final class FoabicInternal {
         if (runtime == expected) {
             runtime = null;
             FoabicRegistries.unbindAll();
+            FoabicCreativeTabs.clear();
         }
     }
 }
