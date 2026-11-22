@@ -46,6 +46,7 @@ Foabic 1.2 hardens the runtime and adds the build, network and config rails a re
   - Foabic Loom auto-detects `src/main/resources/icon.png` or `assets/<id>/icon.png`, validates the file, packages it, and injects Fabric `icon` / NeoForge `logoFile`.
   - The Foabic adapter ships the Minecraft-style feather pixel logo; the plugin demo uses an explicit `assets/<id>/icon.png` path.
   - Documentation explains that launchers such as HMCL/PCL2 only read standard platform metadata from `mods/`; `foabic-mods/` alone is not scanned by them.
+  - Launcher support is documented accurately: HMCL 3.9.2+ reads the metadata icon, while PCL2 only shows the online Modrinth/CurseForge project logo and never a local mod-jar icon. A per-instance icon installer for both launchers is provided in `tools/`.
 - **Tests and evidence**
   - 9 test groups, including JSON metadata, config POJO/record reload, packet round-trip and freeze interception.
   - Two final dedicated-server runs per platform with config, packet registration, freeze guard, unsubscribe and `FOABIC_STOP_CLEAN`.

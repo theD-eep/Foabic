@@ -194,7 +194,7 @@ The generated platform metadata was inspected directly in both jars. The Fabric 
 
 ## Launcher icon evidence
 
-The feather pixel PNG is 978 bytes (a 16×16 sprite scaled 16× with nearest-neighbour sampling) and is packaged at `icon.png` in both adapter jars and in the minimal example.
+The feather pixel PNG is 978 bytes (a 16×16 sprite scaled 16× with nearest-neighbour sampling) and is packaged at `icon.png` in both adapter jars and in the minimal example. Launcher-specific variants are in `docs/assets/launcher/`.
 
 Fabric adapter metadata:
 
@@ -227,8 +227,30 @@ foabic.mod.json:  "icon": "assets/foabic_plugin_demo/icon.png"
 Both plugin jars contain the icon at that path and load from `foabic-mods/`
 and the standard platform `mods/` directory. The plugin also supports automatic
 detection of `src/main/resources/icon.png` when `icon` is omitted; that fallback
-was exercised during development. The icon itself was not visually inspected in
-HMCL/PCL2 or a Minecraft client.
+was exercised during development.
+
+### What the launchers actually read
+
+- **HMCL 3.9.2** reads the mod's metadata icon in its mod list: `ModListPageSkin.loadIcon()`
+  starts with `LocalModFile.getLogoPath()` (the Fabric `icon` / NeoForge
+  `logoFile` value), then tries root names including `icon.png` and `logo.png`.
+- **PCL2 2.99.0.0** does not read a local mod icon at all. Its local mod row
+  calls `Entry.Project.ApplyLogoToMyImage(...)`, and `Project` comes only from
+  the Modrinth/CurseForge lookup. The embedded `icon` cannot appear there until
+  the file is published and recognized by hash.
+- Both launchers support a **per-instance** icon, which is separate from the
+  mod list: HMCL uses `icon.png` in the instance root, PCL2 uses
+  `PCL/Logo.png` plus `LogoCustom=True` in `PCL/Setup.ini`.
+
+HMCL 3.9.2 was launched against a throwaway `.minecraft` directory containing
+the Fabric adapter in `mods/` and the feather as the instance `icon.png`. Its
+instance settings displayed the feather:
+
+![HMCL instance icon](assets/launcher/hmcl-instance-icon-proof.png)
+
+This proves the PNG is accepted by HMCL's JavaFX image path and that the
+instance-icon route works. It does not prove the mod-list cell rendering, which
+was verified from the 3.9.2 source rather than captured.
 
 ## Generated resource pack
 
@@ -253,6 +275,7 @@ The PNG is copied from the example jar; the blockstate points at `foabic_test:bl
 - Packet registration succeeds on both adapters without client-only classloading errors on a dedicated server.
 - The Foabic Loom demo jars are loadable by the normal Foabic loader on both platforms.
 - Icon metadata is present in both adapter jars and in plugin-generated platform metadata, and the feather icon is packaged as `icon.png`.
+- HMCL 3.9.2 accepted the feather as a custom instance icon; PCL2's local-mod icon limitation is confirmed against its current source.
 - The core API is 14,420 bytes and contains no platform imports.
 - Two final runs per platform exit 0 with the same Foabic observations.
 
@@ -260,7 +283,7 @@ The PNG is copied from the example jar; the blockstate points at `foabic_test:bl
 
 - **A live client network round-trip.** Packet encode/decode/dispatch is covered by a fake-transport unit test, and both adapters register their payload handlers successfully. No graphical client or second connected client was launched, so an actual socket send/receive was not exercised.
 - **A rendered client.** No graphical client was launched; the generated resource pack was not visually inspected.
-- **A launcher icon visual.** HMCL/PCL2 and a Minecraft client were not launched, so the feather icon's rendering was not visually captured; only metadata and packaged bytes were verified.
+- **A mod-list icon visual in HMCL/PCL2.** HMCL 3.9.2 was launched and its instance icon was visually confirmed, but the mod-list cell itself was not captured. PCL2 was not launched. PCL2's local mod list cannot show an embedded icon even if launched; only its online project logo or a per-instance icon can appear.
 - **Creative-tab UI.** The server has no creative inventory.
 - **Audio playback.** No `.ogg`/`sounds.json` assets are shipped by the example.
 - **Mixin, GUI, universal packaging.** Explicitly out of scope.

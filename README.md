@@ -12,7 +12,7 @@ Foabic 1.2 hardens the runtime and turns the two-platform setup into a build too
 - **Foabic Loom.** One source tree, one `foabic.mod.json`, one `gradlew build`, and `dist/mod-fabric.jar` + `dist/mod-neoforge.jar`.
 - **Networking.** `FoabicPacket` + `NetworkManager.sendToServer` / `sendToClient`, backed by Fabric's play payload registry and NeoForge 26.3's `RegisterPayloadHandlersEvent`.
 - **Config.** `context.config().register(MyConfig.class)` reads or creates a pretty-printed JSON file; records and ordinary POJOs are supported.
-- **Launcher icons.** Drop `icon.png` into `src/main/resources`; Foabic Loom injects it into both platform metadata files.
+- **Mod metadata icons.** Drop `icon.png` into `src/main/resources`; Foabic Loom injects it into both platform metadata files. See [launcher support](docs/LAUNCHER_ICONS.md): PCL2 does not read local mod icons.
 - **Canonical metadata.** `foabic.mod.json` replaces the old properties file; the legacy file is still accepted for migration.
 
 ## Supported matrix
@@ -281,7 +281,27 @@ You can also use an explicit path:
 
 The plugin validates that the PNG exists in `src/main/resources` and fails the build with a clear message if it does not.
 
-**Launcher visibility:** HMCL/PCL2 and other launchers only scan standard Fabric/NeoForge metadata in the standard `mods/` directory. A jar that exists only in `foabic-mods/` will not show an icon there. To make the icon visible, put the plugin-built `mod-fabric.jar` or `mod-neoforge.jar` in `mods/`; Foabic also scans `mods/` and loads the same jar. The demo jars have been verified to load from both `mods/` and `foabic-mods/`.
+### Launcher support
+
+Metadata icons are not displayed uniformly. This matters before changing the
+icon again:
+
+| Launcher | Mod-list icon from the jar? | Notes |
+| --- | --- | --- |
+| HMCL 3.9.2+ | Yes | Reads Fabric `icon`, NeoForge `logoFile`, then `icon.png`/`logo.png` fallbacks. |
+| PCL2 | **No** | Only displays the online Modrinth/CurseForge project logo, matched by file hash. |
+| Minecraft Mod Menu (Fabric) | Yes | Uses the Fabric `icon` field. |
+| HMCL / PCL2 instance card | Yes, as a separate setting | HMCL uses `icon.png` in the instance root; PCL2 uses `PCL\Logo.png`. |
+
+A jar in `foabic-mods/` is invisible to launcher mod lists; use the platform jar
+in the standard `mods/` directory. For HMCL this is sufficient. For PCL2, the
+embedded icon cannot appear in the local mod list until the project is
+published and recognized online; use a PCL2 instance icon in the meantime.
+
+The full explanation, source references and a helper that installs the feather
+as an instance icon in either launcher are in
+[docs/LAUNCHER_ICONS.md](docs/LAUNCHER_ICONS.md). The 256×256 and 512×512
+variants are in [docs/assets/launcher](docs/assets/launcher/).
 
 ## Build and verify
 
