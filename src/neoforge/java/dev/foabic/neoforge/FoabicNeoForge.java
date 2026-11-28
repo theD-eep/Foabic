@@ -79,6 +79,7 @@ public final class FoabicNeoForge {
         NeoForgeRegistries.BLOCKS.flush(adapter);
         NeoForgeRegistries.ITEMS.flush(adapter);
         NeoForgeRegistries.BLOCK_ENTITY_TYPES.flush(adapter);
+        NeoForgeRegistries.ENTITY_TYPES.flush(adapter);
     }
 
     private record RegisterEventAccessAdapter(RegisterEvent event)

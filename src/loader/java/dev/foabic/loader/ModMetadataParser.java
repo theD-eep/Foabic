@@ -97,10 +97,12 @@ final class ModMetadataParser {
         List<String> authors = strings(json.get("authors"));
         String texture = optionalString(json, "texture", "");
         String icon = normalizeIcon(optionalString(json, "icon", ""), source);
+        JsonElement data = json.has("data") ? json.get("data") : json.get("dataProviders");
+        List<String> dataProviders = classNames(data, source);
 
         return new ModMetadata(id, name, versionText, optionalString(json, "description", ""),
                 authors, entrypoints, dependencies, optionalDependencies, environment,
-                apiRangeText, normalizeTexture(texture, id, source), icon);
+                apiRangeText, normalizeTexture(texture, id, source), icon, dataProviders);
     }
 
     private static ModMetadata parseProperties(byte[] bytes, int offset, String source) {
@@ -148,10 +150,11 @@ final class ModMetadataParser {
         List<String> authors = splitList(properties.getProperty("authors", "").replace(';', ','));
         String texture = normalizeTexture(properties.getProperty("texture", ""), id, source);
         String icon = normalizeIcon(properties.getProperty("icon", ""), source);
+        List<String> dataProviders = classNames(properties.getProperty("data", ""), source);
 
         return new ModMetadata(id, name, versionText,
                 properties.getProperty("description", "").trim(), authors, entrypoints,
-                dependencies, optional, environment, apiRange, texture, icon);
+                dependencies, optional, environment, apiRange, texture, icon, dataProviders);
     }
 
     private static void validateId(String id, String source) {
@@ -216,6 +219,26 @@ final class ModMetadataParser {
             return value.isEmpty() ? List.of() : List.of(value);
         }
         return strings(element);
+    }
+
+    private static List<String> classNames(JsonElement element, String source) {
+        List<String> values = strings(element);
+        for (String value : values) {
+            if (!value.matches("[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*")) {
+                throw new ModLoadException(source + ": invalid data provider class '" + value + "'");
+            }
+        }
+        return values;
+    }
+
+    private static List<String> classNames(String value, String source) {
+        List<String> values = splitList(value);
+        for (String name : values) {
+            if (!name.matches("[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*")) {
+                throw new ModLoadException(source + ": invalid data provider class '" + name + "'");
+            }
+        }
+        return values;
     }
 
     private static List<String> strings(JsonElement element) {

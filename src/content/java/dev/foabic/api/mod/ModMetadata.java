@@ -18,6 +18,11 @@ import java.util.Objects;
  * <p>{@link #icon()} is an optional PNG path inside the mod jar, normally
  * {@code icon.png} or {@code assets/mymod/icon.png}. The Foabic Loom plugin
  * translates it into each platform's metadata.
+ *
+ * <p>{@link #dataProviders()} lists public no-argument classes implementing
+ * {@link dev.foabic.api.data.FoabicDataProvider}. They run in the build-time
+ * {@code foabicData} task and again in the loader, producing standard recipe,
+ * tag, loot-table, model and language JSON.
  */
 public record ModMetadata(
         String id,
@@ -31,7 +36,8 @@ public record ModMetadata(
         Environment environment,
         String apiRange,
         String texture,
-        String icon
+        String icon,
+        List<String> dataProviders
 ) {
     public ModMetadata {
         Objects.requireNonNull(id, "id");
@@ -47,6 +53,7 @@ public record ModMetadata(
         apiRange = apiRange == null || apiRange.isBlank() ? "*" : apiRange.trim();
         texture = texture == null ? "" : texture.trim();
         icon = icon == null ? "" : icon.trim().replace('\\', '/');
+        dataProviders = List.copyOf(dataProviders == null ? List.of() : dataProviders);
         if (id.isBlank()) throw new IllegalArgumentException("mod id must not be blank");
         if (version.isBlank()) throw new IllegalArgumentException("mod version must not be blank");
         if (entrypoints.isEmpty()) {
@@ -72,5 +79,10 @@ public record ModMetadata(
     /** Whether this mod declared a launcher icon. */
     public boolean hasIcon() {
         return !icon.isEmpty();
+    }
+
+    /** Whether this mod declared build-time/runtime data providers. */
+    public boolean hasDataProviders() {
+        return !dataProviders.isEmpty();
     }
 }

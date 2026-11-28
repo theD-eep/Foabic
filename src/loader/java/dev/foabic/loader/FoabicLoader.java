@@ -1,6 +1,7 @@
 package dev.foabic.loader;
 
 import dev.foabic.api.Foabic;
+import dev.foabic.api.data.FoabicDataProvider;
 import dev.foabic.api.internal.FoabicInternal;
 import dev.foabic.api.internal.FoabicRuntime;
 import dev.foabic.api.mod.Environment;
@@ -12,6 +13,7 @@ import dev.foabic.api.registry.FoabicRegistries;
 import dev.foabic.loader.mod.ModClassLoader;
 import dev.foabic.loader.mod.ModContainerImpl;
 import dev.foabic.loader.mod.ModContextImpl;
+import dev.foabic.loader.resource.GeneratedDataPack;
 import dev.foabic.loader.resource.GeneratedResourcePack;
 
 import java.io.IOException;
@@ -128,6 +130,7 @@ public final class FoabicLoader {
                 contexts.add(initialize(container, runtime));
             }
             GeneratedResourcePack.generate(stateRoot, contexts, LOG);
+            GeneratedDataPack.generate(stateRoot, contexts, LOG);
             FoabicCreativeTabs.freeze();
         } catch (Throwable failure) {
             FoabicInternal.uninstall(runtime);
@@ -189,6 +192,37 @@ public final class FoabicLoader {
             } catch (Throwable e) {
                 throw new ModLoadException("mod '" + metadata.id() + "' entrypoint '"
                         + entrypoint + "' failed", e);
+            }
+        }
+
+        for (String providerName : metadata.dataProviders()) {
+            try {
+                Class<?> type = Class.forName(providerName, true, container.classLoader());
+                if (!FoabicDataProvider.class.isAssignableFrom(type)) {
+                    throw new ModLoadException("mod '" + metadata.id() + "' data provider '"
+                            + providerName + "' does not implement "
+                            + FoabicDataProvider.class.getName());
+                }
+                FoabicDataProvider provider = (FoabicDataProvider)
+                        type.getDeclaredConstructor().newInstance();
+                try {
+                    provider.generate(context.data());
+                } catch (RuntimeException e) {
+                    throw new ModLoadException("mod '" + metadata.id() + "' data provider '"
+                            + providerName + "' threw", e);
+                }
+                LOG.log(System.Logger.Level.INFO,
+                        "FOABIC_DATA_PROVIDER mod={0} provider={1}",
+                        metadata.id(), providerName);
+            } catch (InvocationTargetException e) {
+                Throwable cause = e.getCause() == null ? e : e.getCause();
+                throw new ModLoadException("mod '" + metadata.id() + "' data provider '"
+                        + providerName + "' threw", cause);
+            } catch (ModLoadException e) {
+                throw e;
+            } catch (ReflectiveOperationException | LinkageError e) {
+                throw new ModLoadException("cannot initialize data provider '" + providerName
+                        + "' for mod '" + metadata.id() + "'", e);
             }
         }
         return context;

@@ -18,8 +18,15 @@ examples/plugin-demo/dist/mod-neoforge.jar
 
 The Fabric jar contains `fabric.mod.json`; the NeoForge jar contains
 `META-INF/neoforge.mods.toml`; both contain the canonical `foabic.mod.json`
-and the icon at `assets/foabic_plugin_demo/icon.png`. This demo uses the
-explicit metadata field:
+and the icon at `assets/foabic_plugin_demo/icon.png`. The plugin also runs
+`foabicData`; this demo declares no `data` provider, so the task skips:
+
+```text
+FOABIC_DATAGEN skipped: no data provider declared
+```
+
+See [`examples/survival`](../survival) for a plugin demo that does generate
+recipes, tags and models. This demo uses the explicit metadata field:
 
 ```json
 "icon": "assets/foabic_plugin_demo/icon.png"

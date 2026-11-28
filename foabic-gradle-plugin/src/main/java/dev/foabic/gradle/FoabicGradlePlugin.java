@@ -13,7 +13,7 @@ import java.io.File;
  * Foabic Loom: package one source tree as a Fabric and a NeoForge Foabic mod.
  *
  * <pre>{@code
- * plugins { id("dev.foabic.loom") version "1.2.0" }
+ * plugins { id("dev.foabic.loom") version "1.3.0" }
  * foabic { minecraftVersion = "26.3" }
  * }</pre>
  *
@@ -46,6 +46,22 @@ public final class FoabicGradlePlugin implements Plugin<Project> {
             task.setProjectVersion(project.getVersion().toString());
             task.getOutputs().upToDateWhen(ignored -> false);
         });
+
+        SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
+        File dataDirectory = new File(buildDirectory, "foabic-data");
+        var data = project.getTasks().register("foabicData", FoabicDataTask.class, task -> {
+            task.setGroup("foabic");
+            task.setDescription("Runs Foabic data providers and writes standard assets/ and data/ JSON.");
+            task.setMetadataFile(metadataFile);
+            task.setOutputDirectory(dataDirectory);
+            task.setClasspath(project.files(
+                    sourceSets.getByName("main").getOutput().getClassesDirs(),
+                    project.getConfigurations().getByName("runtimeClasspath"),
+                    sourceSets.getByName("main").getCompileClasspath()));
+            task.dependsOn("compileJava");
+        });
+        sourceSets.getByName("main").getResources().srcDir(dataDirectory);
+        project.getTasks().named("processResources").configure(task -> task.dependsOn(data));
 
         var fabricJar = project.getTasks().register("foabicFabricJar", Jar.class, task -> {
             task.setGroup("foabic");

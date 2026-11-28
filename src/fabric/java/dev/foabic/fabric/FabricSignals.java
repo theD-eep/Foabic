@@ -39,7 +39,7 @@ final class FabricSignals {
     static void register() {
         ServerLifecycleEvents.SERVER_STARTED.register(server ->
                 Foabic.events().post(new ServerStartedSignal(
-                        FoabicFabric.PLATFORM, Foabic.MINECRAFT, Foabic.mods().size())));
+                        FoabicFabric.PLATFORM, Foabic.MINECRAFT, Foabic.mods().size(), server)));
 
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             FoabicInternal.onServerStopped();

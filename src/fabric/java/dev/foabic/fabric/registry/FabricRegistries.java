@@ -13,6 +13,7 @@ public final class FabricRegistries {
         bind("blocks", BuiltInRegistries.BLOCK);
         bind("items", BuiltInRegistries.ITEM);
         bind("block_entity_types", BuiltInRegistries.BLOCK_ENTITY_TYPE);
+        bind("entity_types", BuiltInRegistries.ENTITY_TYPE);
         bind("sound_events", BuiltInRegistries.SOUND_EVENT);
     }
 

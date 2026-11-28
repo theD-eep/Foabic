@@ -2,6 +2,7 @@ package dev.foabic.fabric;
 
 import dev.foabic.api.Foabic;
 import dev.foabic.api.mod.Environment;
+import dev.foabic.loader.resource.GeneratedDataPack;
 import dev.foabic.loader.resource.GeneratedResourcePack;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.fabricmc.fabric.api.resource.v1.pack.PackActivationType;
@@ -43,27 +44,49 @@ final class FabricGeneratedResources {
             LOG.log(System.Logger.Level.DEBUG, "no generated Foabic assets to register");
             return;
         }
+        registerPack(root, Identifier.fromNamespaceAndPath("foabic", "generated"),
+                "Foabic generated block assets", "FOABIC_RESOURCE_PACK");
+    }
 
+    /**
+     * Registers generated recipes, tags and loot. Fabric's built-in pack API
+     * registers both CLIENT_RESOURCES and SERVER_DATA, so the same root can be
+     * used on a dedicated server and on an integrated server.
+     */
+    static void registerData() {
+        Path root = Foabic.gameDirectory()
+                .resolve(".foabic")
+                .resolve(GeneratedDataPack.DIRECTORY);
+        if (!GeneratedDataPack.hasData(root)) {
+            LOG.log(System.Logger.Level.DEBUG, "no generated Foabic data to register");
+            return;
+        }
+        registerPack(root, Identifier.fromNamespaceAndPath("foabic", "generated_data"),
+                "Foabic generated recipes, tags and loot", "FOABIC_DATA_PACK");
+    }
+
+    private static void registerPack(Path root, Identifier packId, String description,
+                                     String logMarker) {
         Optional<ModContainer> foabic = FabricLoader.getInstance().getModContainer("foabic");
         if (foabic.isEmpty()) {
             LOG.log(System.Logger.Level.ERROR,
-                    "cannot register generated assets: Foabic's Fabric mod container is missing");
+                    "cannot register {0}: Foabic's Fabric mod container is missing", packId);
             return;
         }
 
         ModContainer generated = new GeneratedModContainer(foabic.get(), root);
-        Identifier packId = Identifier.fromNamespaceAndPath("foabic", "generated");
         boolean registered = ResourceLoader.registerBuiltinPack(
                 packId,
+                "",
                 generated,
-                Component.literal("Foabic generated block assets"),
+                Component.literal(description),
                 PackActivationType.ALWAYS_ENABLED);
         if (registered) {
             LOG.log(System.Logger.Level.INFO,
-                    "FOABIC_RESOURCE_PACK platform=fabric id={0} root={1}", packId, root);
+                    "{0} platform=fabric id={1} root={2}", logMarker, packId, root);
         } else {
             LOG.log(System.Logger.Level.WARNING,
-                    "Fabric rejected the generated Foabic resource pack at {0}", root);
+                    "Fabric rejected the Foabic pack {0} at {1}", packId, root);
         }
     }
 

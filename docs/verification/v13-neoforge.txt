@@ -1,0 +1,42 @@
+Foabic 1.3.0 — NeoForge 26.3.0.115 dedicated-server evidence
+==============================================================
+
+Date: 2026-11-28
+Platform: NeoForge 26.3.0.115
+Minecraft: 26.3
+Java: Eclipse Temurin 25.0.5.1+2
+Adapter:   dist/foabic-neoforge-1.3.0.jar (167,772 bytes)
+Example:   dist/foabic-example-survival-neoforge-1.3.0.jar (17,341 bytes)
+Command:   java @user_jvm_args.txt @...\win_args.txt nogui; console "stop" after "Done"; exit 0
+
+Foabic / Content
+----------------
+信息: Foabic 1.3.0 starting on neoforge/SERVER
+信息: initializing foabic_survival 1.3.0
+信息: FOABIC_SURVIVAL_READY platform=neoforge block=foabic_survival:feather_collector block_entity=foabic_survival:feather_collector item=foabic_survival:feather_blade entity=foabic_survival:feather_wisp
+信息: FOABIC_DATA_PROVIDER mod=foabic_survival provider=survival.SurvivalData
+信息: FOABIC_RESOURCES files=10 textures=1 root=...\.foabic\generated-resources
+信息: FOABIC_DATA files=11 provider=5 jar=0 recipes=2 tags=2 loot=1 root=...\.foabic\generated-data
+信息: Foabic loaded 1 mod(s) in 254 ms on neoforge
+信息: FOABIC_DATA_PACK platform=neoforge id=foabic_generated_data root=...\.foabic\generated-data
+信息: Foabic 1.3.0 attached to NeoForge (SERVER) with 1 Foabic mod(s)
+信息: FOABIC_SURVIVAL_SERVER platform=neoforge recipe_loaded=true block_entity=true item=true entity=true sword_tag=true
+信息: FOABIC_STOP_CLEAN platform=neoforge tick_listeners=false
+
+Server
+------
+[main/INFO] [minecraft/MinecraftServer]: Found new data pack foabic_generated_data, loading it automatically
+[Server thread/INFO] [minecraft/DedicatedServer]: Done (0.620s)! For help, type "help"
+[Server thread/INFO] [minecraft/MinecraftServer]: System chat: Stopping the server
+[Server thread/INFO] [minecraft/MinecraftServer]: Stopping server
+
+Noise
+-----
+The pre-existing Netty epoll/kqueue native-load warnings on Windows are not
+Foabic failures. The server reached Done and exited 0.
+
+Result
+------
+The deferred RegisterEvent path registered all content, the generated recipe and
+minecraft:swords tag were present in the live server, the data pack loaded, and
+the server stopped cleanly with listener cleanup.

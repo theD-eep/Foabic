@@ -38,6 +38,8 @@ public final class AllTests {
         testNetworkRoundTrip();
         LoaderDefensiveTests.run();
         pass("loader defenses");
+        DataGenerationTests.run();
+        pass("data generation");
         System.out.println("ALL TESTS PASSED (" + passed + ")");
     }
 

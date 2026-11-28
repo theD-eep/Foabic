@@ -35,24 +35,27 @@ PASS player-break-block signal
 PASS server-tick signal
 PASS networking round trip
 PASS loader defenses
-ALL TESTS PASSED (9)
+PASS data generation
+ALL TESTS PASSED (10)
 ```
 
 Expected API check:
 
 ```text
-FOABIC_API_SIZE bytes=14420 limit=15360
+FOABIC_API_SIZE bytes=14421 limit=15360
 ```
 
 Artifacts in `dist/`:
 
 ```text
-foabic-api-1.2.0.jar                  14,420 B   core API, no platform imports
-foabic-content-1.2.0.jar              32,219 B   Minecraft-facing API
-foabic-fabric-1.2.0.jar              124,592 B   Fabric adapter + core + content + loader
-foabic-neoforge-1.2.0.jar            124,183 B   NeoForge adapter + core + content + loader
-foabic-example-minimal-1.2.0.jar      10,344 B   common acceptance mod
-foabic-example-chat-1.2.0.jar          2,786 B   chat reply example
+foabic-api-1.3.0.jar                  14,421 B   core API, no platform imports
+foabic-content-1.3.0.jar              68,428 B   Minecraft-facing API
+foabic-fabric-1.3.0.jar              169,137 B   Fabric adapter + core + content + loader
+foabic-neoforge-1.3.0.jar            167,772 B   NeoForge adapter + core + content + loader
+foabic-example-minimal-1.3.0.jar      10,345 B   common acceptance mod
+foabic-example-chat-1.3.0.jar          2,786 B   chat reply example
+foabic-example-survival-fabric-1.3.0.jar   17,251 B  survival demo
+foabic-example-survival-neoforge-1.3.0.jar 17,341 B  survival demo
 ```
 
 The Gradle build reads local `.cache/` inputs and does not download game files itself.
@@ -61,24 +64,41 @@ For adapter changes, install the Gradle-built jars into the prepared Fabric and 
 
 ## Scope rules
 
-v1.2 accepts:
+v1.3 accepts:
 
-- fixes to either adapter, the four registry views, `submit`, `submitBlock`, `submitBlockEntity`, `connect`, lifecycle/subscription cleanup, the current signals and the legacy `UseBlockSignal` compatibility path;
-- loader discovery, dependency preflight, JSON metadata, config and network bridge fixes;
-- Foabic Loom packaging, launcher icon and metadata fixes;
-- generated resource/creative-tab fixes that do not require Mixin or a rendering hook;
+- fixes to either adapter, the five registry views, `submit`, `submitBlock`,
+  `submitBlockEntity`, `submitEntity`, `connect`, lifecycle/subscription cleanup,
+  the current signals and the legacy `UseBlockSignal` compatibility path;
+- block-entity/entity sync fixes and the typed `Synced*` fields;
+- data generation, tags, recipes, loot tables, language and generated data-pack
+  registration;
+- loader discovery, dependency preflight, JSON metadata, config and network
+  bridge fixes;
+- Foabic Loom packaging, `foabicData`, launcher icon and metadata fixes;
+- generated resource/creative-tab fixes that do not require Mixin or a rendering
+  hook;
 - documentation, tests and the acceptance examples.
 
-Do **not** add on the 1.2 line: Mixin, universal packaging, a full signal library, GUI APIs, rendering-layer code or a live client test requirement. Those are explicitly deferred; see [docs/ROADMAP.md](docs/ROADMAP.md).
+Do **not** add on the 1.3 line: Mixin, universal packaging, a full signal
+library, GUI APIs, rendering-layer code, custom entity renderers or a live
+client test requirement. Those are explicitly deferred; see
+[docs/ROADMAP.md](docs/ROADMAP.md).
 
 Architecture rules:
 
 - `src/api` is the core API and must not import Minecraft, Fabric or NeoForge. It must stay small enough for the < 15 KiB jar check.
-- `src/content` may reference Minecraft content types used by the public API (`Block`, `Item`, `BlockEntityType`, `SoundEvent`) but must not import Fabric or NeoForge loader classes.
+- `src/content` may reference Minecraft content types used by the public API
+  (`Block`, `Item`, `BlockEntityType`, `EntityType`, `SoundEvent`, `Entity`) but
+  must not import Fabric or NeoForge loader classes.
 - `src/loader` may compile against Minecraft for API signatures and tests, but the loader runtime must not import Fabric or NeoForge classes.
 - Platform-specific code belongs in `src/fabric` or `src/neoforge`.
 - A registration factory must not be evaluated during NeoForge mod construction; it must run in `RegisterEvent`.
-- Resource generation must stay data-only. Do not parse complex model JSON and do not touch a renderer.
+- Resource/data generation must stay JSON-only. Do not parse complex model JSON
+  and do not touch a renderer.
+- Build-time data providers must not require a live server; use
+  `FoabicDataContext`, not world access.
+- Generated packs must use 26.3 `min_format`/`max_format`, not the legacy
+  `pack_format` field.
 - New platform jars must be produced by `foabic-gradle-plugin`, not by hand-written twin build files.
 
 ## Style
@@ -101,7 +121,7 @@ The version appears in these places and must match:
 6. `examples/*/src/main/resources/foabic.mod.json` — `version` and `api`
 7. `CHANGELOG.md` — the section heading
 
-Tags use a `v` prefix, for example `v1.2.0`.
+Tags use a `v` prefix, for example `v1.3.0`.
 
 ## Commits and pull requests
 

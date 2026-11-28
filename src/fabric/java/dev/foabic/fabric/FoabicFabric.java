@@ -58,6 +58,7 @@ public final class FoabicFabric implements ModInitializer {
         FabricSignals.register();
         FabricCreativeTabs.register();
         FabricGeneratedResources.register(environment);
+        FabricGeneratedResources.registerData();
 
         LOG.log(System.Logger.Level.INFO,
                 "Foabic {0} attached to Fabric ({1}) with {2} Foabic mod(s)",

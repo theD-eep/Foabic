@@ -1,5 +1,6 @@
 package dev.foabic.api.mod;
 
+import dev.foabic.api.data.FoabicDataContext;
 import dev.foabic.api.registry.BlockEntityRegistration;
 import dev.foabic.api.registry.BlockItemRegistration;
 import dev.foabic.api.registry.CreativeTab;
@@ -12,6 +13,8 @@ import dev.foabic.api.util.ResourceLocation;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -122,6 +125,41 @@ public interface ModContext extends FoabicContext {
         return new BlockEntityRegistration<>(type, copy);
     }
 
+    /**
+     * Registers a custom entity type. The builder's factory is evaluated during
+     * the platform registration window on NeoForge, so do not call
+     * {@link Registration#get()} in the same initialization statement.
+     */
+    @SuppressWarnings("unchecked")
+    default <T extends Entity> Registration<EntityType<T>> submitEntity(
+            ResourceLocation id, EntityType.Builder<T> builder) {
+        Objects.requireNonNull(id, "id");
+        Objects.requireNonNull(builder, "builder");
+        ResourceKey<EntityType<?>> key = ResourceKey.create(Registries.ENTITY_TYPE, mcId(id));
+        Registration<EntityType<?>> raw = submit(FoabicRegistries.ENTITY_TYPES, id,
+                () -> builder.build(key));
+        return (Registration<EntityType<T>>) (Registration<?>) raw;
+    }
+
+    /** Registers a custom item and adds it to a vanilla creative tab. */
+    default Registration<Item> submitItem(ResourceLocation id,
+                                          Function<Item.Properties, ? extends Item> factory,
+                                          CreativeTab tab) {
+        Objects.requireNonNull(id, "id");
+        Objects.requireNonNull(factory, "factory");
+        Objects.requireNonNull(tab, "tab");
+        ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, mcId(id));
+        Registration<Item> item = submit(FoabicRegistries.ITEMS, id,
+                () -> factory.apply(new Item.Properties().setId(key)));
+        FoabicCreativeTabs.add(tab, item);
+        return item;
+    }
+
+    /** Registers a plain item and adds it to a vanilla creative tab. */
+    default Registration<Item> submitItem(ResourceLocation id, CreativeTab tab) {
+        return submitItem(id, Item::new, tab);
+    }
+
     /** Adds an already-registered item to a vanilla creative tab. */
     default void addToCreativeTab(CreativeTab tab, Registration<? extends Item> item) {
         FoabicCreativeTabs.add(tab, item);
@@ -132,9 +170,21 @@ public interface ModContext extends FoabicContext {
         return ModResources.noop();
     }
 
+    /**
+     * Records data-generation requests (blockstates, recipes, tags, loot,
+     * language) for this mod. The loader writes them into a standard data pack
+     * at {@code .foabic/generated-data}. A provider class named by
+     * {@code data} in {@code foabic.mod.json} is invoked at build time by the
+     * Foabic Gradle plugin.
+     */
+    FoabicDataContext data();
+
     private static Item defaultBlockItem(Block block, ResourceLocation id) {
-        ResourceKey<Item> key = ResourceKey.create(Registries.ITEM,
-                Identifier.fromNamespaceAndPath(id.namespace(), id.path()));
+        ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, mcId(id));
         return new BlockItem(block, new Item.Properties().setId(key));
+    }
+
+    private static Identifier mcId(ResourceLocation id) {
+        return Identifier.fromNamespaceAndPath(id.namespace(), id.path());
     }
 }

@@ -26,8 +26,8 @@ tries root names including `icon.png`, `logo.png` and
 Use the platform jar in the standard mods directory:
 
 ```text
-.minecraft/mods/foabic-fabric-1.2.0.jar       (Fabric)
-.minecraft/mods/foabic-neoforge-1.2.0.jar     (NeoForge)
+.minecraft/mods/foabic-fabric-1.3.0.jar       (Fabric)
+.minecraft/mods/foabic-neoforge-1.3.0.jar     (NeoForge)
 ```
 
 For an isolated HMCL instance, use that instance's `mods/` directory instead.

@@ -1,6 +1,17 @@
 # Verification evidence
 
-## Foabic 1.2 (current)
+## Foabic 1.3 (current)
+
+The current verification summary is [../VERIFICATION.md](../VERIFICATION.md).
+It covers:
+
+- the final 1.2 `MinimalMod` acceptance path, rebuilt as 1.3;
+- the `foabic_survival` block entity, sword item, entity type, recipes, tags,
+  loot table and generated data pack;
+- `recipe_loaded=true` and `sword_tag=true` on Fabric and NeoForge;
+- clean server stop and listener cleanup.
+
+## Foabic 1.2 (historical)
 
 - [Fabric](v12-fabric.txt)
 - [NeoForge](v12-neoforge.txt)
@@ -15,8 +26,7 @@ included in the same files.
 - [Fabric](v11-fabric.txt)
 - [NeoForge](v11-neoforge.txt)
 
-Kept for release history. The current verification summary is
-[../VERIFICATION.md](../VERIFICATION.md).
+Kept for release history.
 
 ## Foabic 1.0 (historical)
 

@@ -36,6 +36,7 @@ public final class GeneratedResourcePack {
     public static final String DIRECTORY = "generated-resources";
     public static final String PACK_ID = "foabic:generated";
     public static final int RESOURCE_PACK_FORMAT = 97;
+    public static final int RESOURCE_PACK_FORMAT_MINOR = 1;
 
     private static final String FALLBACK_TEXTURE = "foabic:block/generated_fallback";
     private static final String FALLBACK_TEXTURE_PATH =
@@ -107,6 +108,41 @@ public final class GeneratedResourcePack {
             }
         }
 
+        // Runtime data providers can emit assets/ as well as data/. Merge those
+        // files first so they override Foabic's fallback model for the block.
+        for (ModContextImpl context : contexts) {
+            context.dataContext().files().forEach((path, json) -> {
+                if (path.startsWith("assets/")) {
+                    files.put(path, bytes(json));
+                }
+            });
+        }
+
+        // Foabic mods live in foabic-mods/, so Fabric/NeoForge will not expose
+        // their assets/ as a normal built-in resource pack. Copy those files
+        // into Foabic's pack, which also makes build-time data-generated models
+        // and lang files available at runtime.
+        for (Path jarPath : jars) {
+            try (JarFile jar = new JarFile(jarPath.toFile(), false)) {
+                var entries = jar.entries();
+                while (entries.hasMoreElements()) {
+                    JarEntry entry = entries.nextElement();
+                    String name = entry.getName();
+                    if (entry.isDirectory() || !name.startsWith("assets/")
+                            || name.equals("pack.mcmeta") || name.contains("..")
+                            || name.startsWith("/") || files.containsKey(name)) {
+                        continue;
+                    }
+                    try (InputStream input = jar.getInputStream(entry)) {
+                        files.put(name, input.readAllBytes());
+                    }
+                }
+            } catch (IOException e) {
+                log.log(System.Logger.Level.WARNING,
+                        "cannot scan assets/ entries in {0}: {1}", jarPath, e.getMessage());
+            }
+        }
+
         if (textures.contains(FALLBACK_TEXTURE)) {
             files.put(FALLBACK_TEXTURE_PATH, FALLBACK_PNG);
         }
@@ -125,11 +161,13 @@ public final class GeneratedResourcePack {
         files.put("pack.mcmeta", bytes("""
                 {
                   "pack": {
-                    "pack_format": %d,
-                    "description": "Foabic generated block assets"
+                    "description": "Foabic generated block assets",
+                    "min_format": [%d, %d],
+                    "max_format": [%d, %d]
                   }
                 }
-                """.formatted(RESOURCE_PACK_FORMAT)));
+                """.formatted(RESOURCE_PACK_FORMAT, RESOURCE_PACK_FORMAT_MINOR,
+                RESOURCE_PACK_FORMAT, RESOURCE_PACK_FORMAT_MINOR)));
 
         try {
             for (Map.Entry<String, byte[]> entry : files.entrySet()) {

@@ -2,6 +2,7 @@ package dev.foabic.api.registry;
 
 import dev.foabic.api.util.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -21,9 +22,9 @@ import java.util.stream.Stream;
  * binds the concrete platform view before any Foabic mod is initialized, so
  * loading a mod never requires a platform-specific import.
  *
- * <p>The v1.2 surface contains blocks, items, block-entity types and sound
- * events. Only these four are supported; arbitrary platform registries are not
- * part of the stable API.
+ * <p>The v1.3 surface contains blocks, items, block-entity types, entity types
+ * and sound events. Only these five are supported; arbitrary platform
+ * registries are not part of the stable API.
  */
 public final class FoabicRegistries {
 
@@ -35,6 +36,7 @@ public final class FoabicRegistries {
     public static final Registry<Item> ITEMS = new Proxy<>("items");
     public static final Registry<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
             new Proxy<>("block_entity_types");
+    public static final Registry<EntityType<?>> ENTITY_TYPES = new Proxy<>("entity_types");
     public static final Registry<SoundEvent> SOUND_EVENTS = new Proxy<>("sound_events");
 
     private FoabicRegistries() {

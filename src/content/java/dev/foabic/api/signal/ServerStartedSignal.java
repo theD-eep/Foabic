@@ -1,5 +1,7 @@
 package dev.foabic.api.signal;
 
+import net.minecraft.server.MinecraftServer;
+
 import java.util.Objects;
 
 /**
@@ -17,11 +19,18 @@ public final class ServerStartedSignal {
     private final String platform;
     private final String minecraftVersion;
     private final int modCount;
+    private final MinecraftServer server;
 
     public ServerStartedSignal(String platform, String minecraftVersion, int modCount) {
+        this(platform, minecraftVersion, modCount, null);
+    }
+
+    public ServerStartedSignal(String platform, String minecraftVersion, int modCount,
+                               MinecraftServer server) {
         this.platform = Objects.requireNonNull(platform, "platform");
         this.minecraftVersion = Objects.requireNonNull(minecraftVersion, "minecraftVersion");
         this.modCount = modCount;
+        this.server = server;
     }
 
     public String platform() {
@@ -34,6 +43,14 @@ public final class ServerStartedSignal {
 
     public int modCount() {
         return modCount;
+    }
+
+    /**
+     * The live server, or {@code null} when the signal is constructed without
+     * one (tests and synthetic posts). Adapters always provide it.
+     */
+    public MinecraftServer server() {
+        return server;
     }
 
     @Override

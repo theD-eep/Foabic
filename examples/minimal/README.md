@@ -1,7 +1,7 @@
 # Foabic minimal example
 
-This example targets Foabic 1.2 on Minecraft 26.3. It demonstrates the end-to-end
-path:
+This example targets Foabic 1.3 on Minecraft 26.3. It demonstrates the end-to-end
+1.2/1.3 acceptance path:
 
 - one block and its automatic `BlockItem`;
 - one block-entity type bound to that block;
@@ -21,7 +21,7 @@ Build the example jar with:
 gradlew.bat :examples:minimal:jar
 ```
 
-Copy `examples/minimal/build/libs/foabic-example-minimal-1.2.0.jar` into
+Copy `examples/minimal/build/libs/foabic-example-minimal-1.3.0.jar` into
 `foabic-mods/` on either adapter. The PNG is bundled at
 `examples/minimal/src/main/resources/assets/foabic_test/textures/block/test_block.png`,
 and the metadata is `examples/minimal/src/main/resources/foabic.mod.json`.
@@ -29,7 +29,7 @@ and the metadata is `examples/minimal/src/main/resources/foabic.mod.json`.
 Expected marker lines include:
 
 ```text
-FOABIC_CONFIG platform=... greeting=hello-v1.2
+FOABIC_CONFIG platform=... greeting=hello-v1.3
 FOABIC_NETWORK platform=... packet=example.MinimalMod$StatusPacket
 FOABIC_FROZEN_GUARD platform=... caught=true object=foabic_test:late_item
 FOABIC_UNSUBSCRIBE platform=... tick=40

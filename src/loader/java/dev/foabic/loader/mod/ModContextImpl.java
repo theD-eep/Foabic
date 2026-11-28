@@ -1,6 +1,8 @@
 package dev.foabic.loader.mod;
 
 import dev.foabic.api.config.ConfigManager;
+import dev.foabic.api.data.FoabicDataContext;
+import dev.foabic.api.data.internal.FoabicDataContextImpl;
 import dev.foabic.api.event.EventBus;
 import dev.foabic.api.internal.FoabicRuntime;
 import dev.foabic.api.mod.Environment;
@@ -32,6 +34,7 @@ public final class ModContextImpl implements ModContext, ModResources {
     private final FoabicRuntime runtime;
     private final ModContainerImpl container;
     private final ConfigManager config;
+    private final FoabicDataContextImpl data;
     private final Set<ResourceLocation> registeredBlocks = new LinkedHashSet<>();
     private final Map<ResourceLocation, BlockModelRequest> blockRequests = new LinkedHashMap<>();
     private final Map<ResourceLocation, ItemModelRequest> itemRequests = new LinkedHashMap<>();
@@ -41,6 +44,7 @@ public final class ModContextImpl implements ModContext, ModResources {
         this.container = Objects.requireNonNull(container, "container");
         this.config = new ConfigManagerImpl(runtime.gameDirectory(), container.id(),
                 container.logger());
+        this.data = new FoabicDataContextImpl(container.id());
     }
 
     @Override public ModContainer mod() { return container; }
@@ -49,6 +53,10 @@ public final class ModContextImpl implements ModContext, ModResources {
     @Override public String platform() { return runtime.platform(); }
     @Override public System.Logger logger() { return container.logger(); }
     @Override public ConfigManager config() { return config; }
+    @Override public FoabicDataContext data() { return data; }
+
+    /** The loader-side collector, including file introspection. */
+    public FoabicDataContextImpl dataContext() { return data; }
 
     @Override
     public <T> Registration<T> submit(Registry<T> registry, ResourceLocation id,

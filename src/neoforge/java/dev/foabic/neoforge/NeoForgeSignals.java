@@ -33,7 +33,8 @@ final class NeoForgeSignals {
 
     static void onServerStarted(net.neoforged.neoforge.event.server.ServerStartedEvent event) {
         Foabic.events().post(new ServerStartedSignal(
-                FoabicNeoForge.PLATFORM, Foabic.MINECRAFT, Foabic.mods().size()));
+                FoabicNeoForge.PLATFORM, Foabic.MINECRAFT, Foabic.mods().size(),
+                event.getServer()));
     }
 
     static void onServerStopped(net.neoforged.neoforge.event.server.ServerStoppedEvent event) {

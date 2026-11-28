@@ -101,8 +101,10 @@ public class FoabicMetadataTask extends DefaultTask {
         String texture = string(metadata.get("texture"));
         String icon = icon(metadata, id);
         String api = string(metadata.get("api"));
-        if (api == null) api = "^1.2.0";
+        if (api == null) api = "^1.3.0";
         List<String> authors = strings(metadata.get("authors"));
+        List<String> dataProviders = strings(metadata.get("data"));
+        if (dataProviders.isEmpty()) dataProviders = strings(metadata.get("dataProviders"));
         Map<String, String> depends = dependencies(metadata.get("depends"));
         Map<String, String> optional = dependencies(metadata.get("optionalDepends"));
         if (optional.isEmpty()) optional = dependencies(metadata.get("optional"));
@@ -120,6 +122,7 @@ public class FoabicMetadataTask extends DefaultTask {
         normalized.put("api", api);
         if (texture != null && !texture.isBlank()) normalized.put("texture", texture);
         if (icon != null) normalized.put("icon", icon);
+        if (!dataProviders.isEmpty()) normalized.put("dataProviders", dataProviders);
         normalized.put("depends", depends);
         if (!optional.isEmpty()) normalized.put("optionalDepends", optional);
 
@@ -157,7 +160,7 @@ public class FoabicMetadataTask extends DefaultTask {
         fabricDepends.put("fabricloader", ">=0.20.1");
         fabricDepends.put("minecraft", "~" + extensionMinecraftVersion());
         fabricDepends.put("fabric-api", ">=0.166.2");
-        fabricDepends.put("foabic", ">=1.2.0");
+        fabricDepends.put("foabic", ">=1.3.0");
         depends.forEach((key, value) -> {
             if (!key.equals("neoforge") && !key.equals("minecraft")
                     && !key.equals("fabricloader") && !key.equals("fabric-api")) {
@@ -220,7 +223,7 @@ public class FoabicMetadataTask extends DefaultTask {
         out.append("description=").append(toml(description)).append("\n\n");
         dependency(out, id, "neoforge", "[26.3.0.115,)", "required", side);
         dependency(out, id, "minecraft", "[26.3,26.4)", "required", side);
-        dependency(out, id, "foabic", "[1.2.0,)", "required", side);
+        dependency(out, id, "foabic", "[1.3.0,)", "required", side);
         depends.forEach((key, value) -> {
             if (!key.equals("fabric-api") && !key.equals("fabricloader")
                     && !key.equals("minecraft") && !key.equals("neoforge")

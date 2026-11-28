@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
- * The Foabic 1.2 acceptance mod.
+ * The Foabic 1.3 acceptance mod.
  *
  * <p>It exercises content registration, the generated model path, all v1.1
  * signals, config loading, packet registration and explicit subscription
@@ -76,7 +76,7 @@ public final class MinimalMod implements ModInitializer {
         context.resources().block(BLOCK_ID, "foabic_test:block/test_block");
 
         TestConfig config = context.config().register(TestConfig.class);
-        config.greeting = "hello-v1.2";
+        config.greeting = "hello-v1.3";
         context.config().save(config);
         NetworkManager.register(StatusPacket.class, StatusPacket::new);
 
@@ -84,7 +84,7 @@ public final class MinimalMod implements ModInitializer {
                 "FOABIC_REGISTER platform={0} block={1} item={1}",
                 context.platform(), BLOCK_ID);
         context.logger().log(System.Logger.Level.INFO,
-                "FOABIC_V12_REGISTER platform={0} block_entity={1} sound={2}",
+                "FOABIC_V13_REGISTER platform={0} block_entity={1} sound={2}",
                 context.platform(), ENTITY_ID, SOUND_ID);
         context.logger().log(System.Logger.Level.INFO,
                 "FOABIC_CONFIG platform={0} greeting={1}",

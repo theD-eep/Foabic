@@ -91,13 +91,14 @@ public final class LoaderDefensiveTests {
                   "schemaVersion": 1,
                   "id": "json_test",
                   "name": "JSON Test",
-                  "version": "1.2.0",
+                  "version": "1.3.0",
                   "entrypoint": "test.Noop",
                   "environment": "*",
-                  "api": "^1.2.0",
+                  "api": "^1.3.0",
+                  "data": "test.Data",
                   "texture": "json_test:block/test",
                   "icon": "icon.png",
-                  "depends": {"foabic": ">=1.2.0"}
+                  "depends": {"foabic": ">=1.3.0"}
                 }
                 """;
         writeJar(mods.resolve("json.jar"), json);
@@ -106,12 +107,13 @@ public final class LoaderDefensiveTests {
         List<DiscoveredMod> modsFound = ModDiscoverer.discover(mods, Environment.SERVER, logger);
         check(modsFound.size() == 1, "JSON metadata was not accepted: " + logger.errors);
         ModMetadata metadata = modsFound.getFirst().metadata();
-        check(metadata.version().equals("1.2.0"), "JSON version");
+        check(metadata.version().equals("1.3.0"), "JSON version");
         check(metadata.entrypoints().equals(List.of("test.Noop")), "JSON entrypoint");
         check(metadata.dependencies().size() == 1, "JSON dependencies");
-        check(metadata.dependencies().getFirst().range().equals(">=1.2.0"), "JSON range");
+        check(metadata.dependencies().getFirst().range().equals(">=1.3.0"), "JSON range");
         check(metadata.texture().equals("json_test:block/test"), "JSON texture");
         check(metadata.icon().equals("icon.png"), "JSON icon");
+        check(metadata.dataProviders().equals(List.of("test.Data")), "JSON data provider");
     }
 
     private static void testMissingPlatformDependencyIsClear() {
@@ -237,7 +239,7 @@ public final class LoaderDefensiveTests {
         Path jar = tempDir().resolve(id + ".jar");
         ModMetadata metadata = new ModMetadata(id, id, "1.0.0", "",
                 List.of(), List.of("test.Noop"), dependencies, List.of(),
-                Environment.SERVER, api, "", "");
+                Environment.SERVER, api, "", "", List.of());
         return new DiscoveredMod(jar, metadata);
     }
 
@@ -245,7 +247,7 @@ public final class LoaderDefensiveTests {
                                         String texture) {
         return new ModMetadata(id, id, "1.2.0", "",
                 List.of(), List.of("test.Noop"), dependencies, List.of(),
-                Environment.SERVER, api, texture, "");
+                Environment.SERVER, api, texture, "", List.of());
     }
 
     private static String metadataText(String id, String api, String texture) {

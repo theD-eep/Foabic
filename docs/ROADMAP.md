@@ -1,45 +1,59 @@
 # Roadmap
 
-## 1.2 — current
+## 1.3 — current
 
 Shipped and verified on Minecraft 26.3:
 
-- lifecycle-safe signals: `FoabicSubscription`, explicit `unsubscribe()`, session-bus cleanup on both adapters;
-- registry freeze guard with `FoabicRegistryFrozenException` and the required Chinese `ERROR` line;
-- a 14,420-byte core API jar and a no-platform-imports contract check;
-- `foabic.mod.json` canonical metadata and legacy `foabic.mod` migration support;
-- the Foabic Loom Gradle plugin: one source tree to `dist/mod-fabric.jar` and `dist/mod-neoforge.jar`, with platform metadata injection;
-- cross-platform `FoabicPacket` / `NetworkManager` over Fabric play payloads and NeoForge `RegisterPayloadHandlersEvent`;
-- JSON config with `context.config().register(Type.class)` / `save(instance)`;
-- launcher icon packaging and Fabric/NeoForge metadata translation;
-- two final dedicated-server runs per platform, plus plugin-generated jar loads on both.
+- block-entity base with saved, client-synchronised `SyncedInt`, `SyncedLong`,
+  `SyncedFloat`, `SyncedBoolean` and `SyncedString` fields;
+- entity-type registration and a `FoabicEntity` base over vanilla
+  `SynchedEntityData`;
+- `ServerStartedSignal.server()` for post-load recipe/tag/content checks;
+- a fluent data-generation API for blockstates, models, shaped/shapeless/cooking
+  recipes, item/block/entity tags, block loot tables, language files and raw
+  JSON;
+- build-time `foabicData` in Foabic Loom and a runtime
+  `.foabic/generated-data` pack on both platforms;
+- generated packs registered for both client resources and server data;
+- 26.3 `min_format`/`max_format` pack metadata;
+- a survival example with a ticking block entity, sword item, custom entity
+  type, recipes, tags, loot and two languages;
+- dedicated-server evidence that the recipe and `minecraft:swords` tag actually
+  load on Fabric and NeoForge.
 
-## 1.3 candidates
+## 1.4 candidates
 
 Not committed:
 
-- a larger signal library (join/leave, block place, entity events, server stopping);
-- a small command and scheduling API;
-- broader block-entity helpers (ticker binding, menu providers);
-- live client networking verification and a friendly client packet context;
-- data-pack resource helpers alongside the client resource pack;
-- a compatibility matrix for another 26.3 patch release.
+- an inventory/menu helper for block entities (`Container`, `MenuProvider`,
+  item-handler bridge);
+- entity attributes, spawn placement, spawn eggs and an optional renderer
+  registration seam;
+- a small command API and a larger signal library;
+- recipe-display/advancement helpers on top of `raw()`;
+- client datapack/resource reload helpers;
+- a second 26.3 patch-release compatibility matrix.
 
 ## Later
 
 - universal/cross-platform packaging;
 - GUI/screen API;
+- custom entity renderer abstraction;
 - 26.4+ compatibility;
 - binary compatibility commitments across 1.x.
 
-## Non-goals for 1.2
+## Non-goals for 1.3
 
 - **Mixin.** No Mixin dependency, annotation processor or configuration.
-- **Rendering-layer integration.** No Sodium/OpenGL code; the resource work is data generation only.
+- **Rendering-layer integration.** No Sodium/OpenGL code.
+- **Custom entity rendering.** Foabic registers and syncs the entity; the client
+  renderer stays with the mod.
 - replacing Fabric Loader, Fabric API or NeoForge;
 - sandboxing mods;
 - bundling Minecraft, Fabric API or NeoForge.
 
 ## Scope rule
 
-Do not add a deferred subsystem to a release line before the lower-level acceptance path is verified on every supported platform. v1.2 exists to make v1.3 debuggable, not to look complete.
+Do not add a deferred subsystem to a release line before the lower-level
+acceptance path is verified on every supported platform. v1.3 exists to make
+survival content debuggable, not to look complete.

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "foabic_plugin_demo",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "name": "Foabic Loom Demo",
   "description": "One source tree; foabic-gradle-plugin builds the Fabric and NeoForge jars.",
   "authors": ["Foabic contributors"],
@@ -10,6 +10,6 @@
   "entrypoint": "demo.PluginDemoMod",
   "icon": "assets/foabic_plugin_demo/icon.png",
   "depends": {
-    "foabic": ">=1.2.0"
+    "foabic": ">=1.3.0"
   }
 }

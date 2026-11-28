@@ -1,6 +1,6 @@
 # Build
 
-Foabic 1.2 uses a **Gradle 9.5.1** wrapper. There is no project-local `.cmd` or `.ps1` build entry point. `gradlew.bat` / `gradlew` are the standard Gradle wrapper.
+Foabic 1.3 uses a **Gradle 9.5.1** wrapper. There is no project-local `.cmd` or `.ps1` build entry point. `gradlew.bat` / `gradlew` are the standard Gradle wrapper.
 
 ## Requirements
 
@@ -31,15 +31,16 @@ This compiles all modules, runs the core tests and the API contract check, packa
 | Task | Purpose |
 | --- | --- |
 | `build` | Full build, tests, `dist` |
-| `dist` | Copy the six release jars into `dist/` and write `dist/SHA256SUMS` |
-| `coreTest` | Run lifecycle, freeze, metadata, config, networking and loader tests |
+| `dist` | Copy the release jars into `dist/` and write `dist/SHA256SUMS` |
+| `coreTest` | Run lifecycle, freeze, metadata, config, networking, data and loader tests |
 | `:api:check` | Verify the core API jar is under 15 KiB and has no platform imports |
 | `:api:jar` | Compile-time core API |
 | `:content:jar` | Minecraft-facing API |
 | `:fabric:jar` | Fabric adapter, including API + content + loader |
 | `:neoforge:jar` | NeoForge adapter, including API + content + loader |
-| `:examples:minimal:jar` | v1.2 acceptance mod |
+| `:examples:minimal:jar` | v1.3 acceptance mod |
 | `:examples:chat:jar` | Chat reply example |
+| `:examples:survival:build` | Survival demo; runs `foabicData`, writes `dist/mod-fabric.jar` and `dist/mod-neoforge.jar` |
 | `:examples:plugin-demo:build` | One-source-tree Foabic Loom demo; writes its own `dist/` |
 | `clean` | Delete Gradle outputs and `dist/` |
 
@@ -58,8 +59,9 @@ examples/plugin-demo/dist/mod-neoforge.jar
 :loader         loader, metadata, config and generated resources
 :fabric         Fabric Loom adapter
 :neoforge       NeoForge adapter
-:examples:minimal     v1.2 acceptance mod
+:examples:minimal     v1.3 acceptance mod
 :examples:chat        chat reply example
+:examples:survival    survival mod with block entity, data generation and tags
 :examples:plugin-demo Foabic Loom demo
 ```
 
@@ -79,6 +81,7 @@ src/test/java
 foabic-gradle-plugin/src/main/java
 examples/minimal/src/main/{java,resources}
 examples/chat/src/main/{java,resources}
+examples/survival/src/main/{java,resources}
 examples/plugin-demo/src/main/{java,resources}
 ```
 
@@ -87,12 +90,12 @@ examples/plugin-demo/src/main/{java,resources}
 `:api:check` runs `verifyApiContract`:
 
 ```text
-FOABIC_API_SIZE bytes=14420 limit=15360
+FOABIC_API_SIZE bytes=14421 limit=15360
 ```
 
 It fails if:
 
-- `foabic-api-1.2.0.jar` is 15 KiB or larger;
+- `foabic-api-1.3.0.jar` is 15 KiB or larger;
 - any source under `src/api` or `src/content` contains `net.fabricmc.*` or `net.neoforged.*`.
 
 The core API is compiled with debug information disabled and a reproducible jar.
@@ -111,7 +114,11 @@ plugins {
 
 `minecraft("com.mojang:minecraft:26.3")` supplies the merged game jar. Because 26.3 is unobfuscated, there is no mappings dependency and no `modImplementation` configuration. Fabric Loader and Fabric API are normal `implementation` dependencies; the Fabric API POM brings its module jars onto the compile classpath.
 
-The adapter uses Fabric's `ResourceLoader.registerBuiltinPack` with a synthetic `ModContainer` rooted at `.foabic/generated-resources`. This is a public API, not a Mixin hook.
+The adapter uses Fabric's `ResourceLoader.registerBuiltinPack` with a synthetic
+`ModContainer` rooted at `.foabic/generated-resources` (client) and
+`.foabic/generated-data` (server data). The explicit empty subpath is important:
+the overload without it looks under `resourcepacks/<id>`. This is a public API,
+not a Mixin hook.
 
 ### NeoForge
 
@@ -124,7 +131,8 @@ compileOnly(neoForgeLibraries)
 
 This avoids NeoForm/NFRT downloads. In an environment with access to `maven.neoforged.net`, the same source set can be switched to `net.neoforged.moddev`; the adapter code and jar contents are independent of the build plugin.
 
-The adapter registers a fixed `PathPackResources` through `AddPackFindersEvent` for generated resources.
+The adapter registers fixed `PathPackResources` entries through
+`AddPackFindersEvent` for both `CLIENT_RESOURCES` and `SERVER_DATA`.
 
 ## Foabic Loom
 
@@ -149,7 +157,16 @@ foabic {
 }
 ```
 
-The plugin compiles the single `main` source set once and produces `dist/mod-fabric.jar` and `dist/mod-neoforge.jar`. It reads `src/main/resources/foabic.mod.json`, translates it to `fabric.mod.json` / `META-INF/neoforge.mods.toml`, and embeds the canonical metadata as a custom field. If `src/main/resources/icon.png` exists, or `foabic.mod.json` declares an `icon` path, the icon is injected as Fabric's `icon` and NeoForge's `logoFile`.
+The plugin compiles the single `main` source set once and produces
+`dist/mod-fabric.jar` and `dist/mod-neoforge.jar`. It reads
+`src/main/resources/foabic.mod.json`, translates it to `fabric.mod.json` /
+`META-INF/neoforge.mods.toml`, and embeds the canonical metadata as a custom
+field. If `src/main/resources/icon.png` exists, or `foabic.mod.json` declares an
+`icon` path, the icon is injected as Fabric's `icon` and NeoForge's `logoFile`.
+
+It also registers `foabicData`. The task reads the `data`/`dataProviders` list,
+runs each public no-argument `FoabicDataProvider` in a plain JVM, and writes
+`build/foabic-data`, which is included in both jars by `processResources`.
 
 The plugin does not provision a Minecraft development environment. Add the Foabic content API and the Minecraft compile classpath in the normal way; the plugin owns packaging and metadata translation.
 
@@ -177,14 +194,18 @@ The build reads these existing inputs:
 - event dispatch, unsubscribe and clear;
 - listener failure isolation;
 - version/range parsing, including NeoForge's four-part `26.3.0.115`;
-- legacy and v1.2 signal data classes;
+- legacy and v1.3 signal data classes;
 - network encode/decode/dispatch with a fake transport;
 - duplicate-id discovery and malformed-metadata skipping;
 - JSON `foabic.mod.json` parsing;
 - missing Fabric API dependency diagnostics and provided-version resolution;
 - registry-freeze exception and exact ERROR line;
 - config POJO/record save and reload;
-- generated blockstate/model/texture copy and missing-texture fallback.
+- generated blockstate/model/texture copy and missing-texture fallback;
+- generated blockstates, item models, shaped recipes, tags, optional tag entries,
+  loot tables and language files.
+
+The run ends with `ALL TESTS PASSED (10)`.
 
 Expected tail:
 
@@ -198,7 +219,8 @@ PASS player-break-block signal
 PASS server-tick signal
 PASS networking round trip
 PASS loader defenses
-ALL TESTS PASSED (9)
+PASS data generation
+ALL TESTS PASSED (10)
 ```
 
 The test classpath includes Minecraft and the loader because the content and defensive-loader fixtures reference Minecraft classes. No client is started.

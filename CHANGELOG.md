@@ -1,5 +1,88 @@
 # Changelog
 
+## 1.3.0 — 2026-11-28
+
+Foabic 1.3 makes a Foabic mod playable as a survival mod: block entities and
+entities can store state and synchronise it, recipes/tags/loot/models/language
+are generated from code, and the generated data is loaded as an always-on data
+pack on both platforms. Mixin and rendering-layer work remain out of scope.
+
+### Added
+
+- **Block entities with data sync**
+  - `FoabicBlockEntity` with `syncedInt`, `syncedLong`, `syncedFloat`,
+    `syncedBoolean` and `syncedString`.
+  - Fields save through the vanilla `ValueInput`/`ValueOutput` APIs, mark the
+    block entity dirty, and send a `ClientboundBlockEntityDataPacket` update.
+  - `getUpdateTag`/`getUpdatePacket` are implemented; chunk-load sync works.
+  - `FoabicBlock` supplies a ticker that calls `tick()` on both sides.
+- **Entities with vanilla sync**
+  - `FoabicRegistries.ENTITY_TYPES` and `ModContext.submitEntity`.
+  - `FoabicEntity` base implementing `Entity`'s abstract methods.
+  - `define`, `setSynced` and `synced` helpers over `SynchedEntityData`.
+  - `ServerStartedSignal.server()` gives access to the live `MinecraftServer`.
+- **Data generation**
+  - `FoabicDataProvider` / `FoabicDataContext`.
+  - `blockStates(...)` helpers: `simple`, `cubeColumn`, `cross`, `orientable`,
+    `variant`, `model`, `itemModel`.
+  - `recipe(...)`: shaped, shapeless, smelting, blasting, smoking, campfire,
+    stonecutting, with validation.
+  - `tag(...)`: item, block, entity type, fluid, game event, biome, structure,
+    enchantment, recipe, function, damage type; merging, optional entries and
+    `replace()`.
+  - `lootTable(...)`: `dropsSelf`, fixed/uniform drops and `noDrop`.
+  - `lang(...)` and `raw(path, json)`.
+  - Build-time `foabicData` Gradle task; output is included in both platform
+    jars by `processResources`.
+  - Runtime `.foabic/generated-data` data pack, including `data/` entries from
+    Foabic mod jars.
+  - Fabric `ResourceLoader.registerBuiltinPack` and NeoForge
+    `AddPackFindersEvent` now register both client resources and server data.
+  - `pack.mcmeta` uses 26.3 `min_format`/`max_format` (resource 97.1, data 121)
+    instead of the legacy `pack_format` field.
+- **Survival example**
+  - `examples/survival`: feather collector block entity, feather sword item,
+    custom feather wisp entity type, recipes, tags, loot table, block/item
+    models and `en_us`/`zh_cn` language.
+  - One source tree builds `dist/mod-fabric.jar` and `dist/mod-neoforge.jar`.
+- **Tests**
+  - Data generation file/path/JSON tests, tag merging and optional entries.
+  - Dedicated-server checks for recipe loading, sword tag membership and all
+    content registrations.
+
+### Changed from 1.2
+
+- `Foabic.VERSION` is `1.3.0`; `Foabic.API_VERSION` is `4`.
+- `ModContext.data()` is a new required method; the loader implements it.
+- `ModMetadata` adds `dataProviders`; `foabic.mod.json` accepts `data` (one
+  class name or an array).
+- Fabric generated packs now use an empty subpath instead of the implicit
+  `resourcepacks/<id>` path, so the same root is visible for resources and data.
+- NeoForge `AddPackFindersEvent` handles `SERVER_DATA` as well as
+  `CLIENT_RESOURCES`.
+- The API size grew by one byte (14,421) because of the version constant and
+  signal constructor; it remains under 15 KiB.
+- Platform jars are larger because they bundle the data, block and entity API.
+
+### Not included
+
+- Mixin.
+- A universal/merged jar.
+- GUI/screen API.
+- Client renderers for custom entities.
+- Worldgen/structure/advancement builders.
+- A live client networking/rendering harness.
+
+### Verified
+
+- Fabric 26.3 dedicated server: `recipe_loaded=true sword_tag=true`, block
+  entity/item/entity present, data pack registered, clean stop.
+- NeoForge 26.3.0.115 dedicated server: same checks; deferred registration is
+  visible after `RegisterEvent`.
+- `foabic-api` 14,421 bytes; no platform imports.
+- `foabicData` generates 11 files for the survival example (5 data, 6 assets).
+- Evidence: [docs/VERIFICATION.md](docs/VERIFICATION.md).
+
 ## 1.2.0 — 2026-11-21
 
 Foabic 1.2 hardens the runtime and adds the build, network and config rails a real mod needs. Mixin and rendering-layer work remain out of scope.

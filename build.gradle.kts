@@ -10,7 +10,7 @@ plugins {
 
 allprojects {
     group = "dev.foabic"
-    version = "1.2.0"
+    version = "1.3.0"
 }
 
 subprojects {
@@ -68,18 +68,20 @@ tasks.named("check") {
     dependsOn(coreTest, ":api:check")
 }
 
-val apiJar = project(":api").layout.buildDirectory.file("libs/foabic-api-1.2.0.jar")
-val contentJar = project(":content").layout.buildDirectory.file("libs/foabic-content-1.2.0.jar")
-val fabricJar = project(":fabric").layout.buildDirectory.file("libs/foabic-fabric-1.2.0.jar")
-val neoForgeJar = project(":neoforge").layout.buildDirectory.file("libs/foabic-neoforge-1.2.0.jar")
-val exampleJar = project(":examples:minimal").layout.buildDirectory.file("libs/foabic-example-minimal-1.2.0.jar")
-val exampleChatJar = project(":examples:chat").layout.buildDirectory.file("libs/foabic-example-chat-1.2.0.jar")
+val apiJar = project(":api").layout.buildDirectory.file("libs/foabic-api-1.3.0.jar")
+val contentJar = project(":content").layout.buildDirectory.file("libs/foabic-content-1.3.0.jar")
+val fabricJar = project(":fabric").layout.buildDirectory.file("libs/foabic-fabric-1.3.0.jar")
+val neoForgeJar = project(":neoforge").layout.buildDirectory.file("libs/foabic-neoforge-1.3.0.jar")
+val exampleJar = project(":examples:minimal").layout.buildDirectory.file("libs/foabic-example-minimal-1.3.0.jar")
+val exampleChatJar = project(":examples:chat").layout.buildDirectory.file("libs/foabic-example-chat-1.3.0.jar")
+val survivalFabricJar = project(":examples:survival").layout.projectDirectory.file("dist/mod-fabric.jar")
+val survivalNeoForgeJar = project(":examples:survival").layout.projectDirectory.file("dist/mod-neoforge.jar")
 
 val dist by tasks.registering(Copy::class) {
     group = "build"
     description = "Copies the release jars and checksums into the root dist/ directory."
     dependsOn(":api:jar", ":content:jar", ":fabric:jar", ":neoforge:jar",
-        ":examples:minimal:jar", ":examples:chat:jar")
+        ":examples:minimal:jar", ":examples:chat:jar", ":examples:survival:foabicDist")
     doFirst {
         delete(layout.projectDirectory.dir("dist"))
     }
@@ -89,6 +91,8 @@ val dist by tasks.registering(Copy::class) {
     from(neoForgeJar)
     from(exampleJar)
     from(exampleChatJar)
+    from(survivalFabricJar) { rename { "foabic-example-survival-fabric-1.3.0.jar" } }
+    from(survivalNeoForgeJar) { rename { "foabic-example-survival-neoforge-1.3.0.jar" } }
     into(layout.projectDirectory.dir("dist"))
     doLast {
         val output = layout.projectDirectory.dir("dist").asFile
